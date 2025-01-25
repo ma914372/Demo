@@ -39,6 +39,7 @@ variable "instance_type" {
 
 variable "my-key" {
   description = "Name of the SSH key pair"
+  default = "my-key"
 }
 
 variable "ami_id" {
