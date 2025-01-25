@@ -164,7 +164,7 @@ resource "aws_elb" "kubernetes_elb" {
   name               = "kubernetes-master-elb"
   #availability_zones = [aws_subnet.kubernetes_subnet_a.availability_zone, aws_subnet.kubernetes_subnet_b.availability_zone, aws_subnet.kubernetes_subnet_c.availability_zone]
   security_groups    = [aws_security_group.kubernetes_sg.id]
-  subnets            = [aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id]
+  subnets            = [aws_subnet.kubernetes_subnet_a.id, aws_subnet.kubernetes_subnet_c.id]
 
   listener {
     instance_port     = 6443
