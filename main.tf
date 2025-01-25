@@ -32,11 +32,11 @@ resource "aws_subnet" "kubernetes_subnet_b" {
 }
 resource "aws_subnet" "kubernetes_subnet_c" {
   vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr_kubernetes_b}"
+  cidr_block              = "${var.subnet_cidr_kubernetes_c}"
   availability_zone       =  "us-east-1c"
   map_public_ip_on_launch = true
   tags = {
-    Name = "Kuberenetes-Subnet-B"
+    Name = "Kuberenetes-Subnet-C"
   }
 }
 
