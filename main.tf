@@ -143,7 +143,7 @@ resource "aws_instance" "kubernetes_master" {
   instance_type = var.instance_type
   key_name      = var.my-key
   subnet_id     = aws_subnet.kubernetes_subnet_a.id
-  security_groups_ids = [aws_security_group.kubernetes_sg.id]
+  vpc_security_group_ids = [aws_security_group.kubernetes_sg.id]
   tags = {
     Name = "Kubernetes-Master-Node"
   }
@@ -155,7 +155,7 @@ resource "aws_instance" "kubernetes_worker_nodes" {
     instance_type = var.instance_type
     key_name = var.my-key
     subnet_id     = element([aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id], count.index % 2)
-    security_group_ids = [aws_security_group.kubernetes_sg.id]
+    vpc_security_group_ids = [aws_security_group.kubernetes_sg.id]
     tags = {
         Name = "Kubernetes-Worker-Node-${count.index}"
     }
@@ -193,7 +193,7 @@ resource "aws_instance" "ansible_node" {
   instance_type = var.instance_type
   key_name      = var.my-key
   subnet_id     = aws_subnet.ansible_subnet.id
-  security_group_ids = [aws_security_group.ansible_sg.id]
+  vpc_security_group_ids = [aws_security_group.ansible_sg.id]
   tags = {
     Name = "Ansible-Control-Node"
   }
