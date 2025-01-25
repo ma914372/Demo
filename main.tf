@@ -155,7 +155,7 @@ resource "aws_instance" "kubernetes_worker_nodes" {
     instance_type = var.instance_type
     key_name = var.my-key
     subnet_id     = element([aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id], count.index % 2)
-    security_groups = [aws_security_group.kubernetes_sg.id]
+    vpc_security_group_ids = [aws_security_group.kubernetes_sg.id]
     tags = {
         Name = "Kubernetes-Worker-Node-${count.index}"
     }
@@ -163,7 +163,7 @@ resource "aws_instance" "kubernetes_worker_nodes" {
 resource "aws_elb" "kubernetes_elb" {
   name               = "kubernetes-master-elb"
   availability_zones = [aws_subnet.kubernetes_subnet_a.availability_zone, aws_subnet.kubernetes_subnet_b.availability_zone]
-  vpc_security_group_ids    = [aws_security_group.kubernetes_sg.id]
+  security_groups    = [aws_security_group.kubernetes_sg.id]
   subnets            = [aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id]
 
   listener {
