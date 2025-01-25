@@ -14,7 +14,3 @@ output "ansible_node_ip" {
 #output "elb_dns_name" {
   #value = aws_elb.kubernetes_elb.dns_name
 #}
-output "alb_dns_name" {
-  value = aws_lb.kubernetes_elb.dns_name
-  description = "The DNS name of the ALB"
-}
