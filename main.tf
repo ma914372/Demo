@@ -139,14 +139,15 @@ resource "aws_security_group" "ansible_sg" {
     }
 }
 resource "aws_instance" "kubernetes_master" {
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  key_name      = var.my-key
-  subnet_id     = aws_subnet.kubernetes_subnet_a.id
-  vpc_security_group_ids = [aws_security_group.kubernetes_sg.id]
-  tags = {
-    Name = "Kubernetes-Master-Node"
-  }
+    count = 3
+    ami = var.ami_id
+    instance_type = var.instance_type
+    key_name = var.my-key
+    subnet_id = element([aws_subnet.kubernetes_subnet_a.id, aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id], count.index)
+    vpc_security_group_ids = [aws_security_group.kubernetes_sg.id]
+    tags = {
+        Name = "Kubernetes-Master-Node-${count.index}"
+    }
 }
 
 resource "aws_instance" "kubernetes_worker_nodes" {
@@ -160,31 +161,56 @@ resource "aws_instance" "kubernetes_worker_nodes" {
         Name = "Kubernetes-Worker-Node-${count.index}"
     }
 }
-resource "aws_elb" "kubernetes_elb" {
-  name               = "kubernetes-master-elb"
-  #availability_zones = [aws_subnet.kubernetes_subnet_a.availability_zone, aws_subnet.kubernetes_subnet_b.availability_zone, aws_subnet.kubernetes_subnet_c.availability_zone]
+resource "aws_lb" "kubernetes_alb" {
+  name               = "kubernetes-master-alb"
+  internal           = false
+  load_balancer_type = "application"
   security_groups    = [aws_security_group.kubernetes_sg.id]
-  subnets            = [aws_subnet.kubernetes_subnet_a.id, aws_subnet.kubernetes_subnet_c.id]
-
-  listener {
-    instance_port     = 6443
-    instance_protocol = "TCP"
-    lb_port           = 6443
-    lb_protocol       = "TCP"
+  subnets            = [
+    aws_subnet.kubernetes_subnet_a.id,
+    aws_subnet.kubernetes_subnet_b.id,
+    aws_subnet.kubernetes_subnet_c.id
+  ]
+  tags = {
+    Name = "Kubernetes-ALB"
   }
+}
+
+# Define a Target Group for the ALB
+resource "aws_lb_target_group" "kubernetes_master_tg" {
+  name        = "kubernetes-master-target-group"
+  port        = 6443
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.demo_vpc.id
+  target_type = "instance"
 
   health_check {
-    target              = "TCP:6443"
+    protocol            = "TCP"
+    port                = "6443"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
   }
+}
 
-  instances = [aws_instance.kubernetes_master.id]
+# Attach the Master Nodes to the Target Group
+resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
+  count            = 2
+  target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
+  target_id        = aws_instance.kubernetes_master[count.index].id
+  port             = 6443
+}
 
-  tags = {
-    Name = "Kubernetes-ELB"
+# Configure the ALB Listener
+resource "aws_lb_listener" "kubernetes_master_listener" {
+  load_balancer_arn = aws_lb.kubernetes_alb.arn
+  port              = 6443
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
   }
 }
 
