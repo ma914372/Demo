@@ -14,7 +14,7 @@ resource "aws_vpc" "demo_vpc" {
 
 resource "aws_subnet" "kubernetes_subnet_a" {
   vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr}"
+  cidr_block              = "${var.subnet_cidr_kubernetes_a}"
   availability_zone       =  "us-east-1a"
   map_public_ip_on_launch = true
   tags = {
@@ -23,7 +23,7 @@ resource "aws_subnet" "kubernetes_subnet_a" {
 }
 resource "aws_subnet" "kubernetes_subnet_b" {
   vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr}"
+  cidr_block              = "${var.subnet_cidr_kubernetes_b}"
   availability_zone       =  "us-east-1b"
   map_public_ip_on_launch = true
   tags = {
@@ -33,7 +33,7 @@ resource "aws_subnet" "kubernetes_subnet_b" {
 
 resource "aws_subnet" "ansible_subnet" {
   vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr}"
+  cidr_block              = "${var.subnet_cidr_ansible}"
   availability_zone       =  "us-east-1c"
   map_public_ip_on_launch = true
   tags = {
