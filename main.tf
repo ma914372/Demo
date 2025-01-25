@@ -161,10 +161,11 @@ resource "aws_instance" "kubernetes_worker_nodes" {
         Name = "Kubernetes-Worker-Node-${count.index}"
     }
 }
-resource "aws_lb" "kubernetes_alb" {
-  name               = "kubernetes-master-alb"
+# Change Load Balancer to Network Load Balancer
+resource "aws_lb" "kubernetes_nlb" {
+  name               = "kubernetes-master-nlb"
   internal           = false
-  load_balancer_type = "application"
+  load_balancer_type = "network"  # Change to NLB
   security_groups    = [aws_security_group.kubernetes_sg.id]
   subnets            = [
     aws_subnet.kubernetes_subnet_a.id,
@@ -172,15 +173,15 @@ resource "aws_lb" "kubernetes_alb" {
     aws_subnet.kubernetes_subnet_c.id
   ]
   tags = {
-    Name = "Kubernetes-ALB"
+    Name = "Kubernetes-NLB"
   }
 }
 
-# Define a Target Group for the ALB
+# Define a Target Group for the NLB
 resource "aws_lb_target_group" "kubernetes_master_tg" {
   name        = "kubernetes-master-target-group"
   port        = 6443
-  protocol    = "TCP"
+  protocol    = "TCP"  # Use TCP protocol for the target group
   vpc_id      = aws_vpc.demo_vpc.id
   target_type = "instance"
 
@@ -202,11 +203,11 @@ resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
   port             = 6443
 }
 
-# Configure the ALB Listener
+# Configure the NLB Listener (TCP protocol)
 resource "aws_lb_listener" "kubernetes_master_listener" {
-  load_balancer_arn = aws_lb.kubernetes_alb.arn
+  load_balancer_arn = aws_lb.kubernetes_nlb.arn
   port              = 6443
-  protocol          = "HTTP"
+  protocol          = "TCP"  # Use TCP for NLB listener
 
   default_action {
     type             = "forward"
