@@ -20,11 +20,6 @@ variable "subnet_cidr_kubernetes_a" {
   type        = string
   default = "10.30.2.0/24"
 
-variable "subnet_cidr_kubernetes_a" {
-  description = "CIDR block for Kubernetes Subnet A"
-  type        = string
-  default = "10.30.3.0/24"
-
 }
 
 variable "subnet_cidr_kubernetes_b" {
