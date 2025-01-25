@@ -34,6 +34,7 @@ variable "subnet_cidr_ansible" {
 
 variable "instance_type" {
   default = "t2.micro"
+  
 }
 
 variable "my-key" {
@@ -42,4 +43,5 @@ variable "my-key" {
 
 variable "ami_id" {
   description = "Amazon Linux AMI ID"
+  default = "ami-0ac4dfaf1c5c0cce9"
 }
