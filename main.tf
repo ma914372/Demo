@@ -196,7 +196,7 @@ resource "aws_lb_target_group" "kubernetes_master_tg" {
 
 # Attach the Master Nodes to the Target Group
 resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
-  count            = 2
+  count            = 3
   target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
   target_id        = aws_instance.kubernetes_master[count.index].id
   port             = 6443
