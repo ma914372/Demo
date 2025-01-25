@@ -30,11 +30,20 @@ resource "aws_subnet" "kubernetes_subnet_b" {
     Name = "Kuberenetes-Subnet-B"
   }
 }
+resource "aws_subnet" "kubernetes_subnet_c" {
+  vpc_id                  = aws_vpc.demo_vpc.id
+  cidr_block              = "${var.subnet_cidr_kubernetes_b}"
+  availability_zone       =  "us-east-1c"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "Kuberenetes-Subnet-B"
+  }
+}
 
 resource "aws_subnet" "ansible_subnet" {
   vpc_id                  = aws_vpc.demo_vpc.id
   cidr_block              = "${var.subnet_cidr_ansible}"
-  availability_zone       =  "us-east-1c"
+  availability_zone       =  "us-east-1b"
   map_public_ip_on_launch = true
   tags = {
     Name = "Ansible-Subnet"
@@ -66,6 +75,11 @@ resource "aws_route_table_association" "kubernetes_subnet_association_a" {
 }
 resource "aws_route_table_association" "kubernetes_subnet_association_b" {
     subnet_id = aws_subnet.kubernetes_subnet_b.id
+    route_table_id = aws_route_table.demo_route_table.id
+    
+}
+resource "aws_route_table_association" "kubernetes_subnet_association_c" {
+    subnet_id = aws_subnet.kubernetes_subnet_c.id
     route_table_id = aws_route_table.demo_route_table.id
     
 }
@@ -142,7 +156,7 @@ resource "aws_instance" "kubernetes_worker_nodes" {
     ami = var.ami_id
     instance_type = var.instance_type
     key_name = var.my-key
-    subnet_id     = element([aws_subnet.kubernetes_subnet_a.id, aws_subnet.kubernetes_subnet_b.id], count.index % 2)
+    subnet_id     = element([aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id], count.index % 2)
     security_groups = [aws_security_group.kubernetes_sg.name]
     tags = {
         Name = "Kubernetes-Worker-Node-${count.index}"
@@ -152,7 +166,7 @@ resource "aws_elb" "kubernetes_elb" {
   name               = "kubernetes-master-elb"
   availability_zones = [aws_subnet.kubernetes_subnet_a.availability_zone, aws_subnet.kubernetes_subnet_b.availability_zone]
   security_groups    = [aws_security_group.kubernetes_sg.id]
-  subnets            = [aws_subnet.kubernetes_subnet_a.id, aws_subnet.kubernetes_subnet_b.id]
+  subnets            = [aws_subnet.kubernetes_subnet_b.id, aws_subnet.kubernetes_subnet_c.id]
 
   listener {
     instance_port     = 6443
