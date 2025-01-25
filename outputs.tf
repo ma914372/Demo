@@ -14,3 +14,7 @@ output "ansible_node_ip" {
 #output "elb_dns_name" {
   #value = aws_elb.kubernetes_elb.dns_name
 #}
+output "alb_listener" {
+  value = aws_lb_listener.kubernetes_listener.id
+  description = "The listener id of the ALB"
+}
