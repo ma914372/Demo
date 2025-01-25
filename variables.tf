@@ -14,7 +14,7 @@ variable "region" {
 #variable "subnet_cidr" {
  #   description = "CIDR for subnet"
   #  default = "10.30.1.0/24"
-}
+#}
 variable "subnet_cidr_kubernetes_a" {
   description = "CIDR block for Kubernetes Subnet A"
   type        = string
