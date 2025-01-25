@@ -206,7 +206,7 @@ resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
 resource "aws_lb_listener" "kubernetes_master_listener" {
   load_balancer_arn = aws_lb.kubernetes_alb.arn
   port              = 6443
-  protocol          = "TCP"
+  protocol          = "HTTP"
 
   default_action {
     type             = "forward"
