@@ -99,16 +99,29 @@ jobs:
       # Step 3: Set up SSH keys on Ansible Control Node
       - name: Set up SSH Keys on Ansible Control Node
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ env.ANSIBLE_IP }} <<EOF
+          # Ensure the .ssh directory exists
+          mkdir -p ~/.ssh
+          
+          # Create the SSH private key file
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Generate a new key pair for SSH access
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ansible_ip }} <<EOF
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
           PUBLIC_KEY=\$(cat ~/.ssh/id_rsa_ansible.pub)
-          for master in $(echo ${{ env.MASTER_IPS }} | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${master}
+          
+          # Copy the SSH public key to each master node
+          for master in \$(echo "${{ needs.terraform.outputs.master_ips }}" | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$master
           done
-          for worker in $(echo ${{ env.WORKER_IPS }} | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${worker}
+          
+          # Copy the SSH public key to each worker node
+          for worker in \$(echo "${{ needs.terraform.outputs.worker_ips }}" | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$worker
           done
           EOF
+
 
       # Step 4: Create Ansible Inventory
       - name: Create Ansible Inventory
