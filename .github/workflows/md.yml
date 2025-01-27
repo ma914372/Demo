@@ -126,31 +126,31 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           
           # Generate a new key pair for SSH access
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} <<EOF
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
           PUBLIC_KEY=\$(cat ~/.ssh/id_rsa_ansible.pub)
           
           # Copy the SSH public key to each master node
-          for master in \$(echo "${{ needs.terraform.outputs.MASTER_IPS }}" | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$master
+          for master in \$(echo "$MASTER_IPS" | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${master}
           done
           
           # Copy the SSH public key to each worker node
-          for worker in \$(echo "${{ needs.terraform.outputs.WORKER_IPS }}" | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$worker
+          for worker in \$(echo "$WORKER_IPS" | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${worker}
           done
           EOF
 
       # Step 6: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} <<EOF
           echo "[master]" > ~/inventory.ini
-          for master in $(echo ${{ needs.terraform.outputs.MASTER_IPS }} | tr "," "\n"); do
+          for master in $(echo $MASTER_IPS | tr "," "\n"); do
             echo "\$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           echo "[worker]" >> ~/inventory.ini
-          for worker in $(echo ${{ needs.terraform.outputs.WORKER_IPS }} | tr "," "\n"); do
+          for worker in $(echo $WORKER_IPS | tr "," "\n"); do
             echo "\$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           EOF
@@ -158,7 +158,7 @@ jobs:
       # Step 7: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} <<EOF
           git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
           ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
