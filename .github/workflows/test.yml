@@ -1,83 +1,67 @@
-name: Terraform Deploy
+name: Deploy and Configure Infrastructure
 
 on:
   push:
     branches:
-      - main  # Run this workflow when changes are pushed to the main branch
-  pull_request:
-    branches:
       - main
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   terraform:
+    name: Terraform Apply
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Step 1: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    # Step 2: Set up Terraform CLI
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: 1.5.0
+      # Step 2: Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
 
-    # Step 3: Configure AWS Credentials
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+      # Step 3: Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
 
-    # Step 4: Initialize Terraform
-    - name: Terraform Init
-      run: terraform init
+      # Step 4: Apply Terraform
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve
 
-    # Step 5: Validate Terraform Configuration
-    - name: Terraform Validate
-      run: terraform validate
+      # Step 5: Capture Outputs
+      - name: Capture Terraform Outputs
+        id: outputs
+        run: |
+          # Capture raw outputs
+          MASTER_IPS_RAW=$(terraform output -json master_node_ip)
+          WORKER_IPS_RAW=$(terraform output -json worker_node_ips)
+          ANSIBLE_CONTROL_IP_RAW=$(terraform output -json ansible_node_ip)
 
-    # Step 6: Plan Terraform Changes
-    - name: Terraform Plan
-      run: terraform plan -out=tfplan
+          # Debug raw outputs
+          echo "Raw Master IPs: $MASTER_IPS_RAW"
+          echo "Raw Worker IPs: $WORKER_IPS_RAW"
+          echo "Raw Ansible Control IP: $ANSIBLE_CONTROL_IP_RAW"
 
-    # Step 7: Apply Terraform Changes
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main'  # Only apply on the main branch
-      run: terraform apply -auto-approve tfplan
-      env:
-        TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Process outputs
+          MASTER_IPS_COMMA_SEPARATED=$(echo "$MASTER_IPS_RAW" | tr -d '"' | tr ',' '\n' | paste -sd "," -)
+          WORKER_IPS_COMMA_SEPARATED=$(echo "$WORKER_IPS_RAW" | tr -d '"' | tr ',' '\n' | paste -sd "," -)
+          ANSIBLE_CONTROL_IP=$(echo "$ANSIBLE_CONTROL_IP_RAW" | tr -d '"')
 
-    - name: Capture Terraform Output (Raw & Debugging)
-      run: |
-        # Capture raw outputs
-        MASTER_IPS_RAW=$(terraform output -json master_node_ip)
-        WORKER_IPS_RAW=$(terraform output -json worker_node_ips)
-        ANSIBLE_CONTROL_IP_RAW=$(terraform output -json ansible_node_ip)
+          # Debug processed outputs
+          echo "Processed Master IPs: $MASTER_IPS_COMMA_SEPARATED"
+          echo "Processed Worker IPs: $WORKER_IPS_COMMA_SEPARATED"
+          echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP"
 
-        # Debug output to verify the structure of the raw output
-        echo "Raw Master IPs: $MASTER_IPS_RAW"
-        echo "Raw Worker IPs: $WORKER_IPS_RAW"
-        echo "Raw Ansible Control IP: $ANSIBLE_CONTROL_IP_RAW"
-
-        # Extract and process IPs only if they are non-empty
-        MASTER_IPS_COMMA_SEPARATED=$(echo "$MASTER_IPS_RAW" | jq -r '.[]' | paste -sd "," -)
-        WORKER_IPS_COMMA_SEPARATED=$(echo "$WORKER_IPS_RAW" | jq -r '.[]' | paste -sd "," -)
-        ANSIBLE_CONTROL_IP=$(echo "$ANSIBLE_CONTROL_IP_RAW" | jq -r '.')
-
-        # Debug processed output
-        echo "Processed Master IPs: $MASTER_IPS_COMMA_SEPARATED"
-        echo "Processed Worker IPs: $WORKER_IPS_COMMA_SEPARATED"
-        echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP"
-
-        # Export the variables to GitHub environment
-        echo "MASTER_IPS=$MASTER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
-        echo "WORKER_IPS=$WORKER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
-        echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
+          # Export the variables to GitHub environment
+          echo "MASTER_IPS=$MASTER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
+          echo "WORKER_IPS=$WORKER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
+          echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
 
   ansible:
+    name: Ansible Configuration
     runs-on: ubuntu-latest
     needs: terraform
 
@@ -86,7 +70,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Step 2: Set up SSH access for GitHub runner
+      # Step 2: Configure SSH access for GitHub runner
       - name: Configure SSH access
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
@@ -95,7 +79,7 @@ jobs:
       # Step 3: Set up SSH keys on Ansible Control Node
       - name: Set up SSH keys on Ansible Control Node
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$ANSIBLE_CONTROL_IP <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ env.ANSIBLE_CONTROL_IP }} <<EOF
             ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
             PUBLIC_KEY=\$(cat ~/.ssh/id_rsa_ansible.pub)
             for master in $(echo $MASTER_IPS | tr "," "\n"); do
@@ -104,12 +88,12 @@ jobs:
             for worker in $(echo $WORKER_IPS | tr "," "\n"); do
               sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$worker
             done
-            EOF
+          EOF
 
       # Step 4: Create Ansible inventory
       - name: Create Ansible inventory
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$ANSIBLE_CONTROL_IP <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ env.ANSIBLE_CONTROL_IP }} <<EOF
             echo "[master]" > ~/inventory.ini
             for master in $(echo $MASTER_IPS | tr "," "\n"); do
               echo "\$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
@@ -118,7 +102,7 @@ jobs:
             for worker in $(echo $WORKER_IPS | tr "," "\n"); do
               echo "\$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
             done
-            EOF
+          EOF
 
       # Step 5: Run Ansible playbooks
       - name: Run Ansible playbooks
@@ -131,5 +115,4 @@ jobs:
             # Run the Ansible playbooks
             ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
             ansible-playbook -i ~/inventory.ini ansible/argocd.yaml
-            EOF
-
+          EOF
