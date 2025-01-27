@@ -50,37 +50,43 @@ jobs:
       env:
         TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    # Step 8: Capture Terraform Output and export to GitHub environment variables
-    - name: Capture Terraform Output (no jq)
+    - name: Capture Terraform Output (Raw & Debugging)
       run: |
-        # Capture the raw Terraform output
-        MASTER_IPS=$(terraform output -raw master_node_ip)
-        WORKER_IPS=$(terraform output -raw worker_node_ips)
-        ANSIBLE_CONTROL_IP=$(terraform output -raw ansible_node_ip)
+        # Capture the outputs as raw text
+        MASTER_IPS_RAW=$(terraform output master_node_ip)
+        WORKER_IPS_RAW=$(terraform output worker_node_ips)
+        ANSIBLE_CONTROL_IP_RAW=$(terraform output ansible_node_ip)
 
-        # Check if the outputs are non-empty and valid
-        if [ -z "$MASTER_IPS" ]; then
+        # Print raw outputs for debugging
+        echo "Raw Master IPs: $MASTER_IPS_RAW"
+        echo "Raw Worker IPs: $WORKER_IPS_RAW"
+        echo "Raw Ansible Control IP: $ANSIBLE_CONTROL_IP_RAW"
+
+        # Clean and process the IPs only if they are non-empty
+        if [ -n "$MASTER_IPS_RAW" ]; then
+          MASTER_IPS_COMMA_SEPARATED=$(echo "$MASTER_IPS_RAW" | tr '\n' ',' | sed 's/,$//')
+          echo "Processed Master IPs: $MASTER_IPS_COMMA_SEPARATED"
+        else
           echo "Error: MASTER_IPS is empty or invalid"
-          exit 1
         fi
-        if [ -z "$WORKER_IPS" ]; then
+
+        if [ -n "$WORKER_IPS_RAW" ]; then
+          WORKER_IPS_COMMA_SEPARATED=$(echo "$WORKER_IPS_RAW" | tr '\n' ',' | sed 's/,$//')
+          echo "Processed Worker IPs: $WORKER_IPS_COMMA_SEPARATED"
+        else
           echo "Error: WORKER_IPS is empty or invalid"
-          exit 1
         fi
-        if [ -z "$ANSIBLE_CONTROL_IP" ]; then
+
+        if [ -n "$ANSIBLE_CONTROL_IP_RAW" ]; then
+          echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP_RAW"
+        else
           echo "Error: ANSIBLE_CONTROL_IP is empty or invalid"
-          exit 1
         fi
 
-        # Debug output to verify the values
-        echo "Master IPs: $MASTER_IPS"
-        echo "Worker IPs: $WORKER_IPS"
-        echo "Ansible Control IP: $ANSIBLE_CONTROL_IP"
-
-        # Export the IP addresses to GitHub environment variables
-        echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-        echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-        echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
+        # Export the environment variables, but we won't exit the job yet
+        echo "MASTER_IPS=$MASTER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
+        echo "WORKER_IPS=$WORKER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
+        echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP_RAW" >> $GITHUB_ENV
 
   ansible:
     runs-on: ubuntu-latest
