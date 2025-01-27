@@ -50,16 +50,20 @@ jobs:
       env:
         TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    # Step 8: Capture Terraform Output and Export as Env Vars
-    - name: Capture Terraform Output (Dynamic IPs)
+    # Step 8: Capture Terraform Outputs and Set Environment Variables
+    - name: Capture Outputs for Nodes
+      id: capture_outputs
       run: |
-        MASTER_IPS=$(terraform output -raw master_node_ip)
-        WORKER_IPS=$(terraform output -raw worker_node_ips)
-        ANSIBLE_CONTROL_IP=$(terraform output -raw ansible_node_ip)
-        
-        echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-        echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-        echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
+        echo "MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.[]')" >> $GITHUB_ENV
+        echo "WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.[]')" >> $GITHUB_ENV
+        echo "ANSIBLE_NODE_IP=$(terraform output -raw ansible_node_ip)" >> $GITHUB_ENV
+
+    # Step 9: Echo the Captured Outputs
+    - name: Echo Node Details
+      run: |
+        echo "Master Node IPs: $MASTER_IPS"
+        echo "Worker Node IPs: $WORKER_IPS"
+        echo "Ansible Control Node IP: $ANSIBLE_NODE_IP"
 
 
   ansible:
