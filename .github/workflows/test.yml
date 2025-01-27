@@ -54,9 +54,9 @@ jobs:
       - name: Capture Terraform Outputs and Set GitHub Env Variables
         run: |
 
-          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.[]' | paste -sd,)
-          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.[]' | paste -sd,)
-          ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.[]' | paste -sd,)
+          MASTER_IPS=$(terraform output -json master_node_ip)
+          WORKER_IPS=$(terraform output -json worker_node_ips)
+          ANSIBLE_IP=$(terraform output -json ansible_node_ip)
           
 
 
