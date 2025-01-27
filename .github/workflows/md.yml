@@ -161,8 +161,8 @@ jobs:
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
           scp -i ~/.ssh/id_rsa terraform_output.txt ec2-user@${ANSIBLE_IP}:~/terraform_output.txt
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
-          MASTER_IPS=\$(cat ~/terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
-          WORKER_IPS=\$(cat ~/terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          MASTER_IPS=$(cat ~/terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat ~/terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
           echo "[master]" > ~/inventory.ini
           for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
             echo "$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
