@@ -163,57 +163,57 @@ resource "aws_instance" "kubernetes_worker_nodes" {
 }
 # Change Load Balancer to Network Load Balancer
 resource "aws_lb" "kubernetes_nlb" {
-  name               = "kubernetes-master-nlb"
-  internal           = false
-  load_balancer_type = "network"  # Change to NLB
-  security_groups    = [aws_security_group.kubernetes_sg.id]
-  subnets            = [
-    aws_subnet.kubernetes_subnet_a.id,
-    aws_subnet.kubernetes_subnet_b.id,
-    aws_subnet.kubernetes_subnet_c.id
-  ]
-  tags = {
-    Name = "Kubernetes-NLB"
-  }
-}
+#  name               = "kubernetes-master-nlb"
+#  internal           = false
+#  load_balancer_type = "network"  # Change to NLB
+#  security_groups    = [aws_security_group.kubernetes_sg.id]
+#  subnets            = [
+#    aws_subnet.kubernetes_subnet_a.id,
+#    aws_subnet.kubernetes_subnet_b.id,
+#    aws_subnet.kubernetes_subnet_c.id
+# ]
+#  tags = {
+#    Name = "Kubernetes-NLB"
+#  }
+#}
 
 # Define a Target Group for the NLB
-resource "aws_lb_target_group" "kubernetes_master_tg" {
-  name        = "kubernetes-master-target-group"
-  port        = 6443
-  protocol    = "TCP"  # Use TCP protocol for the target group
-  vpc_id      = aws_vpc.demo_vpc.id
-  target_type = "instance"
+#resource "aws_lb_target_group" "kubernetes_master_tg" {
+#  name        = "kubernetes-master-target-group"
+#  port        = 6443
+#  protocol    = "TCP"  # Use TCP protocol for the target group
+#  vpc_id      = aws_vpc.demo_vpc.id
+#  target_type = "instance"
 
-  health_check {
-    protocol            = "TCP"
-    port                = "6443"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
-}
+#  health_check {
+#    protocol            = "TCP"
+#    port                = "6443"
+#    interval            = 30
+#    timeout             = 5
+#    healthy_threshold   = 2
+#    unhealthy_threshold = 2
+#  }
+#}
 
 # Attach the Master Nodes to the Target Group
-resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
-  count            = 3
-  target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
-  target_id        = aws_instance.kubernetes_master[count.index].id
-  port             = 6443
-}
+#resource "aws_lb_target_group_attachment" "kubernetes_master_tg_attachment" {
+#  count            = 3
+#  target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
+#  target_id        = aws_instance.kubernetes_master[count.index].id
+#  port             = 6443
+#}
 
 # Configure the NLB Listener (TCP protocol)
-resource "aws_lb_listener" "kubernetes_master_listener" {
-  load_balancer_arn = aws_lb.kubernetes_nlb.arn
-  port              = 6443
-  protocol          = "TCP"  # Use TCP for NLB listener
+#resource "aws_lb_listener" "kubernetes_master_listener" {
+  #load_balancer_arn = aws_lb.kubernetes_nlb.arn
+ # port              = 6443
+  #protocol          = "TCP"  # Use TCP for NLB listener
 
-  default_action {
+  #default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
-  }
-}
+  #}
+#}
 
 resource "aws_instance" "ansible_node" {
   ami           = var.ami_id
