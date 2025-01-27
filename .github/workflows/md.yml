@@ -128,6 +128,9 @@ jobs:
         run: |
           # Ensure the .ssh directory exists
           mkdir -p ~/.ssh
+          MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
           
           # Create the SSH private key file
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
@@ -152,6 +155,9 @@ jobs:
       # Step 7: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
+          MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           echo "[master]" > ~/inventory.ini
           for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
@@ -166,6 +172,9 @@ jobs:
       # Step 8: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
+          MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
