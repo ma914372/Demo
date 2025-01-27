@@ -23,5 +23,5 @@ output "worker_node_ips" {
 }
 
 output "ansible_node_ip" {
-  value = { "ansible_node" => aws_instance.ansible_node.public_ip }
+  value = { "ansible_node" = aws_instance.ansible_node.public_ip }
 }
