@@ -56,9 +56,9 @@ jobs:
           echo "Raw outputs:"
           terraform output -json
           
-          # Extracting the IPs correctly from Terraform output
-          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value | to_entries[] | .value // empty' || echo "")
-          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value | to_entries[] | .value // empty' || echo "")
+          # Correctly extract the IPs from Terraform output
+          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value | values | .[]' || echo "")
+          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value | values | .[]' || echo "")
           ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value.ansible_node // empty' || echo "")
 
           # Check if any of the outputs are missing or empty
