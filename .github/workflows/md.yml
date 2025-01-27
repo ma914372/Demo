@@ -18,7 +18,6 @@ jobs:
         uses: actions/checkout@v3
 
       # Step 2: Set up Terraform CLI
-      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
@@ -49,9 +48,8 @@ jobs:
         if: github.ref == 'refs/heads/main'  # Only apply on the main branch
         run: terraform apply -auto-approve tfplan
 
-      # Step 8: Capture Terraform Outputs
-      - name: Fetch Terraform Outputs
-        id: terraform_outputs
+      # Step 8: Capture Terraform Outputs and write to file
+      - name: Fetch Terraform Outputs and write to file
         run: |
           echo "Fetching Terraform outputs..."
           
@@ -66,44 +64,57 @@ jobs:
             exit 1
           fi
 
-          # Write outputs to the environment file
-          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-          echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
+          # Write the IPs to a file (this file will be used by the ansible job)
+          echo "MASTER_IPS=$MASTER_IPS" > terraform_output.txt
+          echo "WORKER_IPS=$WORKER_IPS" >> terraform_output.txt
+          echo "ANSIBLE_IP=$ANSIBLE_IP" >> terraform_output.txt
 
           # Print the IPs to the log
           echo "Master IPs: $MASTER_IPS"
           echo "Worker IPs: $WORKER_IPS"
           echo "Ansible IP: $ANSIBLE_IP"
-        env:
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # Upload the file as an artifact so it can be accessed in the next job
+      - name: Upload Terraform Output File
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform_output_file
+          path: terraform_output.txt
 
   ansible:
     runs-on: ubuntu-latest
-    needs: terraform
+    needs: terraform  # This will ensure it waits for the terraform job
 
     steps:
-      # Step 1: Checkout repository
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Debug Environment Variables
-      - name: Debug Environment Variables in Ansible Job
+      # Step 2: Download the Terraform output file
+      - name: Download Terraform Output File
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform_output_file
+
+      # Step 3: Read the IPs from the file
+      - name: Read IPs from the file
         run: |
+          # Read IPs from the file
+          source terraform_output.txt
+
+          # Debugging to ensure the variables are set correctly
           echo "MASTER_IPS: $MASTER_IPS"
           echo "WORKER_IPS: $WORKER_IPS"
           echo "ANSIBLE_IP: $ANSIBLE_IP"
 
-      # Step 3: Configure SSH Access
+      # Step 4: Configure SSH Access
       - name: Configure SSH Access
         run: |
           mkdir -p ~/.ssh  # Ensure the .ssh directory exists
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      # Step 4: Set up SSH keys on Ansible Control Node
+      # Step 5: Set up SSH keys on Ansible Control Node
       - name: Set up SSH Keys on Ansible Control Node
         run: |
           # Ensure the .ssh directory exists
@@ -129,7 +140,7 @@ jobs:
           done
           EOF
 
-      # Step 5: Create Ansible Inventory
+      # Step 6: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
@@ -143,7 +154,7 @@ jobs:
           done
           EOF
 
-      # Step 6: Run Ansible Playbooks
+      # Step 7: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
