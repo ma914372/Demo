@@ -162,7 +162,7 @@ resource "aws_instance" "kubernetes_worker_nodes" {
     }
 }
 # Change Load Balancer to Network Load Balancer
-resource "aws_lb" "kubernetes_nlb" {
+#resource "aws_lb" "kubernetes_nlb" {
 #  name               = "kubernetes-master-nlb"
 #  internal           = false
 #  load_balancer_type = "network"  # Change to NLB
