@@ -50,20 +50,28 @@ jobs:
       env:
         TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    # Step 8: Capture Terraform Outputs and Set Environment Variables
-    - name: Capture Outputs for Nodes
-      id: capture_outputs
+    # Step 8: Capture Terraform Output (JSON format) and export as $GITHUB_ENV
+    - name: Capture Terraform Output (JSON format)
       run: |
-        echo "MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.[]')" >> $GITHUB_ENV
-        echo "WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.[]')" >> $GITHUB_ENV
-        echo "ANSIBLE_NODE_IP=$(terraform output -raw ansible_node_ip)" >> $GITHUB_ENV
+          # Capture outputs in JSON format and store them in variables
+          MASTER_IPS_JSON=$(terraform output -json master_node_ip)
+          WORKER_IPS_JSON=$(terraform output -json worker_node_ips)
+          ANSIBLE_CONTROL_IP_JSON=$(terraform output -json ansible_node_ip)
 
-    # Step 9: Echo the Captured Outputs
-    - name: Echo Node Details
-      run: |
-        echo "Master Node IPs: $MASTER_IPS"
-        echo "Worker Node IPs: $WORKER_IPS"
-        echo "Ansible Control Node IP: $ANSIBLE_NODE_IP"
+          # Debug output to verify the structure
+          echo "Master IPs JSON: $MASTER_IPS_JSON"
+          echo "Worker IPs JSON: $WORKER_IPS_JSON"
+          echo "Ansible Control IP JSON: $ANSIBLE_CONTROL_IP_JSON"
+
+          # Process and clean the JSON output with jq
+          MASTER_IPS=$(echo $MASTER_IPS_JSON | jq -r '.value | join(",")')
+          WORKER_IPS=$(echo $WORKER_IPS_JSON | jq -r '.value | join(",")')
+          ANSIBLE_CONTROL_IP=$(echo $ANSIBLE_CONTROL_IP_JSON | jq -r '.value')
+
+          # Ensure valid environment variable formatting before exporting
+          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
+          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
+          echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
 
 
   ansible:
