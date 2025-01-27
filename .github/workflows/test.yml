@@ -50,7 +50,7 @@ jobs:
       env:
         TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-        - name: Capture Terraform Output (Raw & Debugging)
+    - name: Capture Terraform Output (Raw & Debugging)
       run: |
         # Capture raw outputs
         MASTER_IPS_RAW=$(terraform output -json master_node_ip)
