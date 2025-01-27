@@ -56,7 +56,7 @@ jobs:
           # Capture outputs in JSON format and store them in variables
           MASTER_IPS_JSON=$(terraform output -json master_node_ip)
           WORKER_IPS_JSON=$(terraform output -json worker_node_ips)
-          ANSIBLE_CONTROL_IP_JSON=$(terraform output -json ansible_node_ip)
+          ANSIBLE_CONTROL_IP_JSON=$(terraform output -raw ansible_node_ip)
 
           # Debug output to verify the structure
           echo "Master IPs JSON: $MASTER_IPS_JSON"
@@ -64,9 +64,12 @@ jobs:
           echo "Ansible Control IP JSON: $ANSIBLE_CONTROL_IP_JSON"
 
           # Process and clean the JSON output with jq
-          MASTER_IPS=$(echo $MASTER_IPS_JSON | jq -r '.value | join(",")')
-          WORKER_IPS=$(echo $WORKER_IPS_JSON | jq -r '.value | join(",")')
-          ANSIBLE_CONTROL_IP=$(echo $ANSIBLE_CONTROL_IP_JSON | jq -r '.value')
+          # For master and worker IPs, join the array into a comma-separated string
+          MASTER_IPS=$(echo $MASTER_IPS_JSON | jq -r '.[] | join(",")')
+          WORKER_IPS=$(echo $WORKER_IPS_JSON | jq -r '.[] | join(",")')
+
+          # For ansible_node_ip, just extract the value since it's a single string
+          ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP_JSON
 
           # Ensure valid environment variable formatting before exporting
           echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
