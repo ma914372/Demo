@@ -54,8 +54,7 @@ jobs:
         id: terraform_outputs
         run: |
           echo "Fetching Terraform outputs..."
-          terraform output -json || echo "No Terraform outputs available"
-
+          
           # Fetching the IPs directly (No JSON Parsing)
           MASTER_IPS=$(terraform output -raw master_node_ip || echo "")
           WORKER_IPS=$(terraform output -raw worker_node_ips || echo "")
