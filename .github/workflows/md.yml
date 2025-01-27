@@ -50,6 +50,10 @@ jobs:
           WORKER_IPS=$(terraform output -raw worker_node_ips || echo "")
           ANSIBLE_IP=$(terraform output -raw ansible_node_ip || echo "")
 
+          echo "MASTER_IPS: $MASTER_IPS"
+          echo "WORKER_IPS: $WORKER_IPS"
+          echo "ANSIBLE_IP: $ANSIBLE_IP"
+
           if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
             echo "Error: One or more Terraform outputs are missing or empty."
             exit 1
@@ -59,9 +63,6 @@ jobs:
           echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
           echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
 
-          echo "Master IPs: $MASTER_IPS"
-          echo "Worker IPs: $WORKER_IPS"
-          echo "Ansible IP: $ANSIBLE_IP"
         env:
           AWS_REGION: us-east-1
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -86,6 +87,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+          # Debug: Check the IP variables before using them
+          echo "ANSIBLE_IP: ${{ needs.terraform.outputs.ANSIBLE_IP }}"
+          echo "MASTER_IPS: ${{ needs.terraform.outputs.MASTER_IPS }}"
+          echo "WORKER_IPS: ${{ needs.terraform.outputs.WORKER_IPS }}"
 
           # Force SSH login with debug and no host key checking
           ssh -v -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ec2-user@${{ needs.terraform.outputs.ANSIBLE_IP }} <<EOF
