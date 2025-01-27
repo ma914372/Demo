@@ -88,16 +88,22 @@ jobs:
 
     steps:
       # Step 1: Checkout code
-      - name: Checkout code
-        uses: actions/checkout@v3
+        - name: Checkout code
+          uses: actions/checkout@v3
 
-      # Step 2: Download the Terraform output file
+      # Step 2: Install sshpass
+      - name: Install sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      # Step 3: Download the Terraform output file
       - name: Download Terraform Output File
         uses: actions/download-artifact@v3
         with:
           name: terraform_output_file
 
-      # Step 3: Read the IPs from the file
+      # Step 4: Read the IPs from the file
       - name: Read IPs from the file
         run: |
           # Read IPs from the file using `cat` and `cut` to extract values
@@ -110,14 +116,14 @@ jobs:
           echo "WORKER_IPS: $WORKER_IPS"
           echo "ANSIBLE_IP: $ANSIBLE_IP"
 
-      # Step 4: Configure SSH Access
+      # Step 5: Configure SSH Access
       - name: Configure SSH Access
         run: |
           mkdir -p ~/.ssh  # Ensure the .ssh directory exists
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      # Step 5: Set up SSH keys on Ansible Control Node
+      # Step 6: Set up SSH Keys on Ansible Control Node
       - name: Set up SSH Keys on Ansible Control Node
         run: |
           # Ensure the .ssh directory exists
@@ -139,33 +145,45 @@ jobs:
           PUBLIC_KEY=\$(cat ~/.ssh/id_rsa_ansible.pub)
           
           # Copy the SSH public key to each master node using `cut` and `tr`
-          for master in \$(echo "$MASTER_IPS" | tr "," "\n" | cut -d' ' -f1); do
+          for master in \$(echo "$MASTER_IPS" | tr "," "\n"); do
             sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${master}
           done
           
           # Copy the SSH public key to each worker node using `cut` and `tr`
-          for worker in \$(echo "$WORKER_IPS" | tr "," "\n" | cut -d' ' -f1); do
+          for worker in \$(echo "$WORKER_IPS" | tr "," "\n"); do
             sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${worker}
           done
           EOF
 
-      # Step 6: Create Ansible Inventory
+      # Step 7: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
+          MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          echo "MASTER_IPS: $MASTER_IPS"
+          echo "WORKER_IPS: $WORKER_IPS"
+          echo "ANSIBLE_IP: $ANSIBLE_IP"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} <<EOF
           echo "[master]" > ~/inventory.ini
-          for master in \$(echo $MASTER_IPS | tr "," "\n" | cut -d' ' -f1); do
+          for master in \$(echo $MASTER_IPS | tr "," "\n"); do
             echo "\$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           echo "[worker]" >> ~/inventory.ini
-          for worker in \$(echo $WORKER_IPS | tr "," "\n" | cut -d' ' -f1); do
+          for worker in \$(echo $WORKER_IPS | tr "," "\n"); do
             echo "\$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           EOF
 
-      # Step 7: Run Ansible Playbooks
+      # Step 8: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
+          MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
+          WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          echo "MASTER_IPS: $MASTER_IPS"
+          echo "WORKER_IPS: $WORKER_IPS"
+          echo "ANSIBLE_IP: $ANSIBLE_IP"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} <<EOF
           git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
