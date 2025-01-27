@@ -177,8 +177,10 @@ jobs:
       - name: Run Ansible Playbooks
         run: |
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
+          ssh -t -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} /usr/bin/bash -e {0} << 'EOF'
           mkdir -p /tmp/repo
+          which git
+          which ansible
           /usr/bin/git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
           /usr/local/bin/ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
