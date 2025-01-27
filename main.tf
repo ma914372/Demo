@@ -210,8 +210,8 @@ resource "aws_instance" "kubernetes_worker_nodes" {
   #protocol          = "TCP"  # Use TCP for NLB listener
 
   #default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
+    #type             = "forward"
+    #target_group_arn = aws_lb_target_group.kubernetes_master_tg.arn
   #}
 #}
 
