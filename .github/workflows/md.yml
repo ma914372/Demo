@@ -53,30 +53,29 @@ jobs:
       - name: Fetch Terraform Outputs
         run: |
           echo "Fetching Terraform outputs..."
-echo "Raw outputs:"
-terraform output -json
+          echo "Raw outputs:"
+          terraform output -json
+          
+          # Correctly extract the IPs from Terraform output
+          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
+          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
+          ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value.ansible_node // empty' || echo "")
 
-# Correctly extract the IPs from Terraform output
-MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
-WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
-ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value.ansible_node // empty' || echo "")
+          # Check if any of the outputs are missing or empty
+          if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
+            echo "Error: One or more Terraform outputs are missing or empty."
+            exit 1
+          fi
 
-# Check if any of the outputs are missing or empty
-if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
-  echo "Error: One or more Terraform outputs are missing or empty."
-  exit 1
-fi
+          # Set the environment variables
+          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
+          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
+          echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
 
-# Set the environment variables
-echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
-
-# Print the IPs
-echo "Master IPs: $MASTER_IPS"
-echo "Worker IPs: $WORKER_IPS"
-echo "Ansible IP: $ANSIBLE_IP"
-
+          # Print the IPs
+          echo "Master IPs: $MASTER_IPS"
+          echo "Worker IPs: $WORKER_IPS"
+          echo "Ansible IP: $ANSIBLE_IP"
         env:
           AWS_REGION: us-east-1
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
