@@ -85,7 +85,7 @@ jobs:
             for worker in $(echo $WORKER_IPS | tr "," "\n"); do
               sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$worker
             done
-EOF
+            EOF
 
       # Step 4: Create Ansible inventory
       - name: Create Ansible inventory
@@ -99,7 +99,7 @@ EOF
             for worker in $(echo $WORKER_IPS | tr "," "\n"); do
               echo "\$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
             done
-EOF
+            EOF
 
       # Step 5: Run Ansible playbooks
       - name: Run Ansible playbooks
@@ -112,5 +112,5 @@ EOF
             # Run the Ansible playbooks
             ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
             ansible-playbook -i ~/inventory.ini ansible/argocd.yaml
-EOF
+            EOF
 
