@@ -176,9 +176,7 @@ jobs:
       # Step 8: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
-          MASTER_IPS=$(cat ~/terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
-          WORKER_IPS=$(cat ~/terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
-          ANSIBLE_IP=$(cat ~/terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
