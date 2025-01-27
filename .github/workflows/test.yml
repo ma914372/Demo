@@ -1,5 +1,3 @@
-name: Deploy Kubernetes & Argo CD with Ansible
-
 name: Terraform Deploy
 
 on:
