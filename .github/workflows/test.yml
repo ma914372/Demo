@@ -51,31 +51,22 @@ jobs:
           TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # Step 8: Capture Terraform Outputs
-      - name: Capture output
+      - name: Capture Terraform Outputs and Set GitHub Env Variables
         run: |
-          # Capture raw outputs as strings
-          MASTER_IPS_RAW=$(terraform output -json master_node_ip | tr -d '"')
-          WORKER_IPS_RAW=$(terraform output -json worker_node_ips | tr -d '"')
-          ANSIBLE_CONTROL_IP=$(terraform output -json ansible_node_ip | tr -d '"')
+          MASTER_NODE_IPS=$(terraform output -json master_node_ip)
+          WORKER_NODE_IPS=$(terraform output -json worker_node_ips)
+          ANSIBLE_NODE_IP=$(terraform output -json ansible_node_ip)
 
-          # Debug raw outputs
-          echo "Raw Master IPs: $MASTER_IPS_RAW"
-          echo "Raw Worker IPs: $WORKER_IPS_RAW"
-          echo "Raw Ansible Control IP: $ANSIBLE_CONTROL_IP"
+          MASTER_IPS=$(echo "$MASTER_NODE_IPS" | jq -r 'to_entries | .[] | "MASTER_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
+          WORKER_IPS=$(echo "$WORKER_NODE_IPS" | jq -r 'to_entries | .[] | "WORKER_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
+          ANSIBLE_IP=$(echo "$ANSIBLE_NODE_IP" | jq -r 'to_entries | .[] | "ANSIBLE_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
 
-          # Process outputs (comma-separated strings)
-          MASTER_IPS=$(echo "$MASTER_IPS_RAW" | tr ',' '\n' | paste -sd "," -)
-          WORKER_IPS=$(echo "$WORKER_IPS_RAW" | tr ',' '\n' | paste -sd "," -)
-
-          # Debug processed outputs
-          echo "Processed Master IPs: $MASTER_IPS"
-          echo "Processed Worker IPs: $WORKER_IPS"
-          echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP"
-
-          # Export variables to GitHub environment
-          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-          echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
+      - name: Use the set variables
+        run: |
+          echo "Master 1 IP: $MASTER_master1"
+          echo "Worker 1 IP: $WORKER_worker1"
+          echo "Ansible Node IP: $ANSIBLE_ansible_node"
+          
 
   ansible:
     runs-on: ubuntu-latest
