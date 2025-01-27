@@ -53,13 +53,27 @@ jobs:
       # Step 8: Capture Terraform Outputs
       - name: Capture Terraform Outputs and Set GitHub Env Variables
         run: |
-          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value[]')
-          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value[]')
-          ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value')
+          echo "Fetching Terraform outputs..."
+          echo "Raw outputs:"
+          terraform output -json
+
+          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value[]' || echo "")
+          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value[]' || echo "")
+          ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value' || echo "")
+
+          if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
+            echo "Error: One or more Terraform outputs are missing or empty."
+            exit 1
+          fi
 
           echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
           echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
           echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
+
+          echo "Master IPs: $MASTER_IPS"
+          echo "Worker IPs: $WORKER_IPS"
+          echo "Ansible IP: $ANSIBLE_IP"
+        shell: bash
 
   ansible:
     runs-on: ubuntu-latest
