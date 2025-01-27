@@ -221,12 +221,25 @@ resource "aws_instance" "ansible_node" {
   key_name      = var.my-key
   subnet_id     = aws_subnet.ansible_subnet.id
   vpc_security_group_ids = [aws_security_group.ansible_sg.id]
+  user_data = <<-EOF
+              #!/bin/bash
+              # Update the system and install Python 3
+              sudo yum update -y
+              sudo yum install -y python3 python3-pip
+
+              # Install Ansible (installing a specific version)
+              sudo pip3 install "ansible==2.9.27"  # Replace with your desired version
+
+              # Install Git (if needed for Ansible playbook sourcing)
+              sudo yum install -y git
+
+              # Verify installation
+              ansible --version
+              EOF
   tags = {
     Name = "Ansible-Control-Node"
   }
 }
-
-
 
 
 
