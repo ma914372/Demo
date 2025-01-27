@@ -28,7 +28,7 @@ variable "subnet_cidr_kubernetes_b" {
   default = "10.30.2.0/24"
 }
 variable "subnet_cidr_kubernetes_c" {
-  description = "CIDR block for Kubernetes Subnet B"
+  description = "CIDR block for Kubernetes Subnet C"
   type        = string
   default = "10.30.3.0/24"
 
@@ -41,7 +41,7 @@ variable "subnet_cidr_ansible" {
 }
 
 variable "instance_type" {
-  default = "t2.micro"
+  default = "t2.medium"
   
 }
 
