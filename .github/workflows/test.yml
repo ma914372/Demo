@@ -53,28 +53,30 @@ jobs:
     # Step 8: Capture Terraform Output (JSON format) and export as $GITHUB_ENV
     - name: Capture Terraform Output (JSON format)
       run: |
-          # Capture outputs in JSON format and store them in variables
-          MASTER_IPS_JSON=$(terraform output -json master_node_ip)
-          WORKER_IPS_JSON=$(terraform output -json worker_node_ips)
-          ANSIBLE_CONTROL_IP_JSON=$(terraform output -raw ansible_node_ip)
+        # Capture outputs in JSON format and store them in variables
+        MASTER_IPS_JSON=$(terraform output -json master_node_ip)
+        WORKER_IPS_JSON=$(terraform output -json worker_node_ips)
+        ANSIBLE_CONTROL_IP_JSON=$(terraform output -json ansible_node_ip)
 
-          # Debug output to verify the structure
-          echo "Master IPs JSON: $MASTER_IPS_JSON"
-          echo "Worker IPs JSON: $WORKER_IPS_JSON"
-          echo "Ansible Control IP JSON: $ANSIBLE_CONTROL_IP_JSON"
+        # Debug output to verify the structure
+        echo "Master IPs JSON: $MASTER_IPS_JSON"
+        echo "Worker IPs JSON: $WORKER_IPS_JSON"
+        echo "Ansible Control IP JSON: $ANSIBLE_CONTROL_IP_JSON"
 
-          # Process and clean the JSON output with jq
-          # For master and worker IPs, join the array into a comma-separated string
-          MASTER_IPS=$(echo $MASTER_IPS_JSON | jq -r '.[] | join(",")')
-          WORKER_IPS=$(echo $WORKER_IPS_JSON | jq -r '.[] | join(",")')
+        # Process and clean the JSON output with jq (using raw values)
+        MASTER_IPS=$(echo $MASTER_IPS_JSON | jq -r '.[] | join(",")')
+        WORKER_IPS=$(echo $WORKER_IPS_JSON | jq -r '.[] | join(",")')
+        ANSIBLE_CONTROL_IP=$(echo $ANSIBLE_CONTROL_IP_JSON | jq -r '.')
 
-          # For ansible_node_ip, just extract the value since it's a single string
-          ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP_JSON
+        # Debug output of processed variables
+        echo "Processed Master IPs: $MASTER_IPS"
+        echo "Processed Worker IPs: $WORKER_IPS"
+        echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP"
 
-          # Ensure valid environment variable formatting before exporting
-          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-          echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
+        # Ensure valid environment variable formatting before exporting
+        echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
+        echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
+        echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
 
 
   ansible:
