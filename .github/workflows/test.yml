@@ -51,9 +51,9 @@ jobs:
           TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # Step 8: Capture Terraform Outputs
-      - name: Capture output
+      - name: Capture Terraform Outputs
         run: |
-          # Capture raw outputs
+          # Capture raw outputs as JSON arrays
           MASTER_IPS_RAW=$(terraform output -json master_node_ip)
           WORKER_IPS_RAW=$(terraform output -json worker_node_ips)
           ANSIBLE_CONTROL_IP_RAW=$(terraform output -json ansible_node_ip)
@@ -63,19 +63,19 @@ jobs:
           echo "Raw Worker IPs: $WORKER_IPS_RAW"
           echo "Raw Ansible Control IP: $ANSIBLE_CONTROL_IP_RAW"
 
-          # Process the comma-separated IPs into arrays
-          MASTER_IPS_COMMA_SEPARATED=$(echo "$MASTER_IPS_RAW" | tr -d '"' | tr ',' '\n' | paste -sd "," -)
-          WORKER_IPS_COMMA_SEPARATED=$(echo "$WORKER_IPS_RAW" | tr -d '"' | tr ',' '\n' | paste -sd "," -)
-          ANSIBLE_CONTROL_IP=$(echo "$ANSIBLE_CONTROL_IP_RAW" | tr -d '"')
+          # Process outputs into clean strings
+          MASTER_IPS=$(echo "$MASTER_IPS_RAW" | jq -r '.[]' | paste -sd "," -)
+          WORKER_IPS=$(echo "$WORKER_IPS_RAW" | jq -r '.[]' | paste -sd "," -)
+          ANSIBLE_CONTROL_IP=$(echo "$ANSIBLE_CONTROL_IP_RAW" | jq -r '.')
 
           # Debug processed outputs
-          echo "Processed Master IPs: $MASTER_IPS_COMMA_SEPARATED"
-          echo "Processed Worker IPs: $WORKER_IPS_COMMA_SEPARATED"
+          echo "Processed Master IPs: $MASTER_IPS"
+          echo "Processed Worker IPs: $WORKER_IPS"
           echo "Processed Ansible Control IP: $ANSIBLE_CONTROL_IP"
 
           # Export the variables to GitHub environment
-          echo "MASTER_IPS=$MASTER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
-          echo "WORKER_IPS=$WORKER_IPS_COMMA_SEPARATED" >> $GITHUB_ENV
+          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
+          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
           echo "ANSIBLE_CONTROL_IP=$ANSIBLE_CONTROL_IP" >> $GITHUB_ENV
 
   ansible:
