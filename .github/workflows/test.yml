@@ -63,9 +63,9 @@ jobs:
 
       - name: Use the set variables
         run: |
-          echo "Master 1 IP: $MASTER_master1"
-          echo "Worker 1 IP: $WORKER_worker1"
-          echo "Ansible Node IP: $ANSIBLE_ansible_node"
+          echo "Master 1 IP: $'{{env.MASTER_master1}}'"
+          echo "Worker 1 IP: $'{{env.WORKER_worker1}}'"
+          echo "Ansible Node IP: $'{{env.ANSIBLE_ansible_node}}'"
           
 
   ansible:
