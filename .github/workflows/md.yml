@@ -51,15 +51,14 @@ jobs:
 
       # Step 8: Capture Terraform Outputs
       - name: Fetch Terraform Outputs
+        id: terraform_outputs
         run: |
           echo "Fetching Terraform outputs..."
-          echo "Raw outputs:"
-          terraform output -json
-          
-          # Correctly extract the IPs from Terraform output
-          MASTER_IPS=$(terraform output -json master_node_ip | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
-          WORKER_IPS=$(terraform output -json worker_node_ips | jq -r '.value | to_entries | map(.value) | join(",")' || echo "")
-          ANSIBLE_IP=$(terraform output -json ansible_node_ip | jq -r '.value.ansible_node // empty' || echo "")
+
+          # Fetching the IPs directly (No JSON Parsing)
+          MASTER_IPS=$(terraform output -raw master_node_ip || echo "")
+          WORKER_IPS=$(terraform output -raw worker_node_ips || echo "")
+          ANSIBLE_IP=$(terraform output -raw ansible_node_ip || echo "")
 
           # Check if any of the outputs are missing or empty
           if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
@@ -67,12 +66,12 @@ jobs:
             exit 1
           fi
 
-          # Set the environment variables
-          echo "MASTER_IPS=$MASTER_IPS" >> $GITHUB_ENV
-          echo "WORKER_IPS=$WORKER_IPS" >> $GITHUB_ENV
-          echo "ANSIBLE_IP=$ANSIBLE_IP" >> $GITHUB_ENV
+          # Set the outputs as GitHub Actions outputs
+          echo "::set-output name=master_ips::$MASTER_IPS"
+          echo "::set-output name=worker_ips::$WORKER_IPS"
+          echo "::set-output name=ansible_ip::$ANSIBLE_IP"
 
-          # Print the IPs
+          # Print the IPs to the log
           echo "Master IPs: $MASTER_IPS"
           echo "Worker IPs: $WORKER_IPS"
           echo "Ansible IP: $ANSIBLE_IP"
@@ -99,27 +98,27 @@ jobs:
       # Step 3: Set up SSH keys on Ansible Control Node
       - name: Set up SSH Keys on Ansible Control Node
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$ANSIBLE_IP <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ansible_ip }} <<EOF
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
           PUBLIC_KEY=\$(cat ~/.ssh/id_rsa_ansible.pub)
-          for master in $(echo $MASTER_IPS | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$master
+          for master in $(echo ${{ needs.terraform.outputs.master_ips }} | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${master}
           done
-          for worker in $(echo $WORKER_IPS | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\$worker
+          for worker in $(echo ${{ needs.terraform.outputs.worker_ips }} | tr "," "\n"); do
+            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@\${worker}
           done
           EOF
 
       # Step 4: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$ANSIBLE_IP <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ansible_ip }} <<EOF
           echo "[master]" > ~/inventory.ini
-          for master in $(echo $MASTER_IPS | tr "," "\n"); do
+          for master in $(echo ${{ needs.terraform.outputs.master_ips }} | tr "," "\n"); do
             echo "\$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           echo "[worker]" >> ~/inventory.ini
-          for worker in $(echo $WORKER_IPS | tr "," "\n"); do
+          for worker in $(echo ${{ needs.terraform.outputs.worker_ips }} | tr "," "\n"); do
             echo "\$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible" >> ~/inventory.ini
           done
           EOF
@@ -127,7 +126,7 @@ jobs:
       # Step 5: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$ANSIBLE_IP <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.ansible_ip }} <<EOF
           git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
           ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
