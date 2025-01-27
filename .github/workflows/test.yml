@@ -48,13 +48,14 @@ jobs:
       if: github.ref == 'refs/heads/main'  # Only apply on the main branch
       run: terraform apply -auto-approve tfplan
       env:
-          TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+        TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-     - name: Capture Terraform Output (Dynamic IPs)
-        run: |
-          echo "MASTER_IPS=$(terraform output -raw master_node_ip)" >> $GITHUB_ENV
-          echo "WORKER_IPS=$(terraform output -raw worker_node_ips)" >> $GITHUB_ENV
-          echo "ANSIBLE_CONTROL_IP=$(terraform output -raw ansible_node_ip)" >> $GITHUB_ENV
+    # Step 8: Capture Terraform Output (Dynamic IPs)
+    - name: Capture Terraform Output (Dynamic IPs)
+      run: |
+        echo "MASTER_IPS=$(terraform output -raw master_node_ip)" >> $GITHUB_ENV
+        echo "WORKER_IPS=$(terraform output -raw worker_node_ips)" >> $GITHUB_ENV
+        echo "ANSIBLE_CONTROL_IP=$(terraform output -raw ansible_node_ip)" >> $GITHUB_ENV
 
 
   ansible:
@@ -102,13 +103,14 @@ EOF
 
       # Step 5: Run Ansible playbooks
       - name: Run Ansible playbooks
-      run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ env.ANSIBLE_CONTROL_IP }} <<EOF
-          # Clone the repository containing the playbooks
-          git clone https://github.com/ma914372/Demo /tmp/repo
-          cd /tmp/repo
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ env.ANSIBLE_CONTROL_IP }} <<EOF
+            # Clone the repository containing the playbooks
+            git clone https://github.com/ma914372/Demo /tmp/repo
+            cd /tmp/repo
 
-          # Run the Ansible playbooks
-          ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
-          ansible-playbook -i ~/inventory.ini ansible/argocd.yaml
+            # Run the Ansible playbooks
+            ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
+            ansible-playbook -i ~/inventory.ini ansible/argocd.yaml
 EOF
+
