@@ -57,15 +57,15 @@ jobs:
           WORKER_NODE_IPS=$(terraform output -json worker_node_ips)
           ANSIBLE_NODE_IP=$(terraform output -json ansible_node_ip)
 
-          MASTER_IPS=$(echo "$MASTER_NODE_IPS" | jq -r 'to_entries | .[] | "MASTER_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
-          WORKER_IPS=$(echo "$WORKER_NODE_IPS" | jq -r 'to_entries | .[] | "WORKER_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
-          ANSIBLE_IP=$(echo "$ANSIBLE_NODE_IP" | jq -r 'to_entries | .[] | "ANSIBLE_\(.key)=\(.value)"' | tee -a $GITHUB_ENV)
+          MASTER_IPS=$(echo "$MASTER_NODE_IPS" | jq -r 'to_entries | .[] | .value' | paste -sd, -)
+          WORKER_IPS=$(echo "$WORKER_NODE_IPS" | jq -r 'to_entries | .[] | .value' | paste -sd, -)
+          ANSIBLE_IP=$(echo "$ANSIBLE_NODE_IP" | jq -r 'to_entries | .[] | .value' | paste -sd, -)
 
       - name: Use the set variables
         run: |
-          echo "Master 1 IP: $'{{env.MASTER_master1}}'"
-          echo "Worker 1 IP: $'{{env.WORKER_worker1}}'"
-          echo "Ansible Node IP: $'{{env.ANSIBLE_ansible_node}}'"
+          echo "Master IPs: $MASTER_IPS"
+          echo "Worker IPs: $WORKER_IPS"
+          echo "Ansible Node IPs: $ANSIBLE_IP"
           
 
   ansible:
