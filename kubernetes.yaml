@@ -1,9 +1,9 @@
 ---
-- name: Setup K3s Cluster (Master and Worker Nodes)
+- name: Install K3s and configure worker nodes
   hosts: all
   become: yes
   tasks:
-    # Ensure curl-minimal is removed first to prevent conflicts
+    # Remove conflicting curl-minimal package (if installed)
     - name: Remove conflicting curl-minimal package
       dnf:
         name: curl-minimal
@@ -18,29 +18,22 @@
           - iproute
         state: present
 
-    # Install K3s on Master Node
-    - name: Install K3s on Master Node
-      when: inventory_hostname in groups['master']
+    # Install K3s Agent on Worker Nodes
+    - name: Install K3s Agent on Worker Nodes
+      when: inventory_hostname in groups['worker']
       shell: |
-        curl -sfL https://get.k3s.io | sh -
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars['load_balancer_host'].ansible_host }}:6443 K3S_TOKEN={{ hostvars[groups['master'][0]].k3s_token.stdout }} sh -
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Enable K3s service on Master
-      when: inventory_hostname in groups['master']
+    # Enable K3s Agent service on Worker Nodes
+    - name: Enable K3s Agent service on Worker Nodes
       systemd:
-        name: k3s
+        name: k3s-agent
         enabled: yes
         state: started
 
-    # Save K3s Token for Worker Nodes
-    - name: Save K3s Token for Worker Nodes
-      when: inventory_hostname in groups['master']
-      command: cat /var/lib/rancher/k3s/server/node-token
-      register: k3s_token
-      changed_when: false
-
-    - name: Display K3s Token
-      when: inventory_hostname in groups['master']
+    # Debug the K3s installation token
+    - name: Debug the K3s installation token
       debug:
-        msg: "The K3
+        msg: "The K3s token is: {{ hostvars[groups['master'][0]].k3s_token.stdout }}"
