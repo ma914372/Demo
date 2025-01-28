@@ -3,8 +3,8 @@
   hosts: all
   become: yes
   tasks:
-    - name: Install dependencies (curl, iproute)
-      package:
+    - name: Install dependencies (curl, iproute) using dnf
+      dnf:
         name:
           - curl
           - iproute
