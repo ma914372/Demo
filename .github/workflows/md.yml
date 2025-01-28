@@ -139,40 +139,34 @@ jobs:
           # Generate a new key pair for SSH access
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
-          PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
-          
-          
-          # Output the public key to a temporary file
-          echo "$PUBLIC_KEY" > ~/ansible_public_key.pub
+          #PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
+          cat ~/.ssh/id_rsa_ansible.pub > ~/ansible_public_key.pub
           EOF
+          
+          # Copy the public key back to the local machine
+           scp -i ~/.ssh/id_rsa ec2-user@${ANSIBLE_IP}:~/ansible_public_key.pub ./ansible_public_key.pub
 
-          # Copy the public key back to the local GitHub Runner machine
-          scp -i ~/.ssh/id_rsa ec2-user@${ANSIBLE_IP}:~/ansible_public_key.pub ./ansible_public_key.pub
-
-          # Set the public key as a GitHub Actions environment variable
-          echo "ANSIBLE_PUBLIC_KEY=$(cat ./ansible_public_key.pub)" >> $GITHUB_ENV
-
-          # Append the public key to the authorized_keys file on each master and worker node
-          append_key_to_remote() {
+          # Step 2: Copy the public key file to each master and worker node
+          copy_key_to_node() {
           NODE_IP=$1
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$NODE_IP << EOF
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ./ansible_public_key.pub ec2-user@$NODE_IP:~/ansible_public_key.pub
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$NODE_IP << 'EOF'
           mkdir -p ~/.ssh
-          echo '${ANSIBLE_PUBLIC_KEY}' >> ~/.ssh/authorized_keys
+          cat ~/ansible_public_key.pub >> ~/.ssh/authorized_keys
+          rm ~/ansible_public_key.pub
           chmod 700 ~/.ssh
           chmod 600 ~/.ssh/authorized_keys
           EOF
           }
 
-          # Loop through and append to master nodes
+          # Step 3: Loop through the master and worker IPs and copy the key
           for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
-          append_key_to_remote $master
+          copy_key_to_node $master
           done
 
-          # Loop through and append to worker nodes
           for worker in $(echo "$WORKER_IPS" | tr "," "\n"); do
-          append_key_to_remote $worker
+          copy_key_to_node $worker
           done
-
       # Step 7: Create Ansible Inventory
       - name: Create Ansible Inventory
         run: |
