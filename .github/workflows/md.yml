@@ -177,7 +177,7 @@ jobs:
       - name: Run Ansible Playbooks
         run: |
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
-          ssh -t -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} /usr/bin/bash -e {0} << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           mkdir -p /tmp/repo
           which git
           which ansible
