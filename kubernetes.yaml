@@ -1,5 +1,5 @@
 ---
-# Install K3s Cluster (Master and Worker Nodes)
+# Install K3s Server on Master Node
 
 - name: Install K3s Server on Master Nodes
   hosts: master
@@ -10,6 +10,9 @@
         curl -sfL https://get.k3s.io | sh -
       args:
         creates: /usr/local/bin/k3s
+
+    - name: Set correct permissions for k3s.yaml
+      command: sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for K3s Server to start
   hosts: master
@@ -29,60 +32,6 @@
     - name: Generate K3s token for worker nodes
       command: /usr/local/bin/k3s token create
       register: k3s_token
-
-- name: Install K3s Agent on Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Install K3s Agent on Worker Node
-      shell: |
-        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['master'][0]].ansible_host }}:6443 K3S_TOKEN={{ k3s_token.stdout }} sh -
-      args:
-        creates: /usr/local/bin/k3s
-
-- name: Enable K3s Agent service on Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Enable and start K3s Agent
-      service:
-        name: k3s-agent
-        state: started
-        enabled: true
-
-- name: chmod the kubeconfig file on Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Change permissions of K3s config file
-      command: chmod 644 /etc/rancher/k3s/k3s.yaml
-
-- name: Install K3s Agent on Additional Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Install K3s Agent on Worker Node (optional for multiple workers)
-      shell: |
-        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['master'][0]].ansible_host }}:6443 K3S_TOKEN={{ k3s_token.stdout }} sh -
-      args:
-        creates: /usr/local/bin/k3s
-
-- name: Enable K3s Agent service on Additional Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Enable and start K3s Agent (optional for multiple workers)
-      service:
-        name: k3s-agent
-        state: started
-        enabled: true
-
-- name: chmod the kubeconfig file on Additional Worker Nodes
-  hosts: worker
-  become: true
-  tasks:
-    - name: Change permissions of K3s config file (optional for multiple workers)
-      command: chmod 644 /etc/rancher/k3s/k3s.yaml
 
 - name: Verify the Cluster Status
   hosts: master
