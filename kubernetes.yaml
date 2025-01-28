@@ -10,7 +10,7 @@
         creates: /usr/local/bin/k3s
 
     - name: Set correct permissions for k3s.yaml
-      command: sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+      command: chmod 644 /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for K3s Server to Start on Master Node
   hosts: master
@@ -31,25 +31,28 @@
       command: /usr/local/bin/k3s token create
       register: k3s_token
 
-    - name: Set Master IP and Token
+    - name: Set Master IP and Token as Facts
       set_fact:
         k3s_master_ip: "{{ ansible_host }}"
         k3s_token: "{{ k3s_token.stdout }}"
+
+    - name: Debug Master IP and Token
+      debug:
+        msg:
+          - "Master IP: {{ k3s_master_ip }}"
+          - "K3S_TOKEN: {{ k3s_token }}"
 
 - name: Install K3s Agent on Worker Nodes
   hosts: worker
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact
-    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"
+    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"
 
   tasks:
     - name: Install K3s Agent on Worker Node
       shell: |
         curl -sfL https://get.k3s.io | K3S_URL="https://{{ k3s_master_ip }}:6443" K3S_TOKEN="{{ k3s_token }}" sh -
-      environment:
-        K3S_TOKEN: "{{ k3s_token }}"
-        K3S_URL: "https://{{ k3s_master_ip }}:6443"
       args:
         creates: /usr/local/bin/k3s
 
@@ -64,7 +67,7 @@
   become: true
   tasks:
     - name: Check K3s node status
-      command: /usr/local/bin/k3s kubectl get nodes
+      shell: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
       register: k3s_node_status
 
     - name: Show Worker Node Status
@@ -76,7 +79,7 @@
   become: true
   tasks:
     - name: Check the status of K3s cluster
-      command: /usr/local/bin/k3s kubectl get nodes
+      shell: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
       register: k3s_status
 
     - name: Show K3s status
