@@ -1,113 +1,114 @@
 ---
-- name: Install K3s on Master Nodes
-  hosts: master
-  become: true
+- name: Setup Kubernetes Cluster with Kubeadm on EC2 (Amazon Linux)
+  hosts: all
+  become: yes
   tasks:
-    - name: Install K3s Server on Master Node
-      shell: |
-        curl -sfL https://get.k3s.io | sh -
-      args:
-        creates: /usr/local/bin/k3s
+    - name: Install required packages on Amazon Linux
+      yum:
+        name:
+          - curl
+          - wget
+          - vim
+          - jq
+        state: present
 
-    - name: Set correct permissions for k3s.yaml
-      command: sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+    - name: Disable swap (Kubernetes requirement)
+      command: swapoff -a
+      ignore_errors: yes
 
-- name: Wait for K3s Server to Start on Master Node
-  hosts: master
-  become: true
-  tasks:
-    - name: Wait for K3s to start on the Master Node
-      wait_for:
-        host: "{{ ansible_host }}"
-        port: 6443
-        delay: 10
-        timeout: 300
+    - name: Remove swap from fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^.*swap.*'
+        state: absent
 
-- name: Generate K3s Token and Set Master IP
-  hosts: master
-  become: true
-  tasks:
-    - name: Generate K3s token for worker nodes
-      command: /usr/local/bin/k3s token create
-      register: k3s_token
+    - name: Install Docker on Amazon Linux
+      yum:
+        name: docker
+        state: present
 
-    - name: Set Master IP and Token
-      set_fact:
-        k3s_master_ip: "{{ ansible_host }}"
-        k3s_token: "{{ k3s_token.stdout }}"
-
-- name: Install K3s Agent on Worker Nodes
-  hosts: worker
-  become: true
-  vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact for master IP
-    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact for token
-    ansible_user: "{{ hostvars[groups['master'][0]].ansible_ssh_user }}"  # Reference SSH user for master node
-    ansible_ssh_private_key_file: "{{ hostvars[groups['master'][0]].ansible_ssh_private_key_file }}"  # Reference SSH key
-
-  tasks:
-    - name: Install K3s Agent on Worker Node
-      shell: |
-        curl -sfL https://get.k3s.io | K3S_URL="https://{{ k3s_master_ip }}:6443" K3S_TOKEN="{{ k3s_token }}" sh -
-      environment:
-        K3S_TOKEN: "{{ k3s_token }}"
-        K3S_URL: "https://{{ k3s_master_ip }}:6443"
-      args:
-        creates: /usr/local/bin/k3s
-
-    - name: Ensure k3s-agent service is started
+    - name: Enable Docker service
       service:
-        name: k3s-agent
+        name: docker
         state: started
         enabled: yes
 
-    - name: Check if k3s.yaml exists with become
-      stat:
-        path: /etc/rancher/k3s/k3s.yaml
-      register: k3s_yaml_status
-      become: true  # Check with elevated permissions
+    - name: Install dependencies for Kubernetes
+      yum:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
 
-    - name: Retrieve k3s.yaml from Master Node if missing
-      when: not k3s_yaml_status.stat.exists
-      block:
-        - name: Rsync k3s.yaml from Master Node to Worker Node
-          command: >
-            rsync -avz -e "ssh -o StrictHostKeyChecking=no -i {{ ansible_ssh_private_key_file }}" 
-            {{ ansible_user }}@{{ k3s_master_ip }}:/etc/rancher/k3s/k3s.yaml /tmp/k3s.yaml
-          delegate_to: localhost  # This command will run on localhost but transfer the file from Master to Worker
+    - name: Enable Kubernetes services
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - kubelet
+        - docker
 
-        - name: Copy k3s.yaml from Localhost to Worker Node
-          copy:
-            src: /tmp/k3s.yaml
-            dest: /etc/rancher/k3s/k3s.yaml
-            mode: 0644
-          become: true
-
-    - name: Update k3s.yaml on Worker Node to point to Master Node IP
+- name: Initialize the First Kubernetes Master Node
+  hosts: master1
+  become: yes
+  tasks:
+    - name: Initialize Kubernetes on master1 node
       shell: |
-        sudo sed -i "s/localhost/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
-      when: k3s_yaml_status.stat.exists
+        kubeadm init --control-plane-endpoint "{{ master_loadbalancer_ip }}" --pod-network-cidr=10.244.0.0/16
+      register: kubeadm_init_output
+      ignore_errors: yes
 
-- name: Verify Worker Node Joins Cluster
+    - name: Set kubeconfig for root user on master1
+      shell: |
+        mkdir -p $HOME/.kube
+        cp /etc/kubernetes/admin.conf $HOME/.kube/config
+        chown $(id -u):$(id -g) $HOME/.kube/config
+      when: kubeadm_init_output.rc == 0
+
+    - name: Deploy Flannel CNI network
+      shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+      when: kubeadm_init_output.rc == 0
+
+    - name: Get the kubeadm join command for other masters and workers
+      shell: kubeadm token create --print-join-command
+      register: join_command
+      when: kubeadm_init_output.rc == 0
+
+    - name: Save the join command
+      set_fact:
+        kubeadm_join_command: "{{ join_command.stdout }}"
+      when: kubeadm_init_output.rc == 0
+
+- name: Join Additional Master Nodes to the Cluster
+  hosts: master2:master3
+  become: yes
+  vars:
+    kubeadm_join_command: "{{ hostvars[groups['master1'][0]].kubeadm_join_command }}"
+  tasks:
+    - name: Join additional master nodes to the cluster
+      shell: "{{ kubeadm_join_command }}"
+      ignore_errors: yes
+
+- name: Join Worker Nodes to the Cluster
   hosts: worker
-  become: true
+  become: yes
+  vars:
+    kubeadm_join_command: "{{ hostvars[groups['master1'][0]].kubeadm_join_command }}"
   tasks:
-    - name: Check K3s node status
-      command: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
-      register: k3s_node_status
+    - name: Join worker nodes to the cluster
+      shell: "{{ kubeadm_join_command }}"
+      ignore_errors: yes
 
-    - name: Show Worker Node Status
-      debug:
-        var: k3s_node_status.stdout
-
-- name: Verify the Cluster Status
-  hosts: master
-  become: true
+- name: Verify Cluster Status on Master Node
+  hosts: master1
+  become: yes
   tasks:
-    - name: Check the status of K3s cluster
-      command: /usr/local/bin/k3s kubectl get nodes
-      register: k3s_status
+    - name: Check the status of Kubernetes nodes
+      command: kubectl get nodes
+      register: k8s_status
 
-    - name: Show K3s Cluster Status
+    - name: Show Kubernetes Cluster Status
       debug:
-        var: k3s_status.stdout
+        var: k8s_status.stdout
