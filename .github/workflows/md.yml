@@ -140,18 +140,20 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
           PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
-   
-          
-          # Copy the SSH public key to each master node using `cut` and `tr`
-          for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@$master
-          done
-          
-          # Copy the SSH public key to each worker node using `cut` and `tr`
-          for worker in $(echo "$WORKER_IPS" | tr "," "\n"); do
-            sshpass -p "ec2-user-password" ssh-copy-id -i ~/.ssh/id_rsa_ansible.pub ec2-user@$worker
-          done
           EOF
+          
+          # Store the generated public key into an environment variable (from the local machine)
+          ANSIBLE_PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
+
+          # Copy the SSH public key to each master node using `ssh` with the identity file
+          for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$master "echo \"$ANSIBLE_PUBLIC_KEY\" >> ~/.ssh/authorized_keys"
+          done
+
+          # Copy the SSH public key to each worker node using `ssh` with the identity file
+          for worker in $(echo "$WORKER_IPS" | tr "," "\n"); do
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@$worker "echo \"$ANSIBLE_PUBLIC_KEY\" >> ~/.ssh/authorized_keys"
+          done
 
       # Step 7: Create Ansible Inventory
       - name: Create Ansible Inventory
