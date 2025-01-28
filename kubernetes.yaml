@@ -43,6 +43,7 @@
     k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact for master IP
     k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact for token
     ansible_user: "{{ hostvars[groups['master'][0]].ansible_ssh_user }}"  # Reference SSH user for master node
+    ansible_ssh_private_key_file: "{{ hostvars[groups['master'][0]].ansible_ssh_private_key_file }}"  # Reference SSH key
 
   tasks:
     - name: Install K3s Agent on Worker Node
@@ -69,11 +70,11 @@
     - name: Retrieve k3s.yaml from Master Node if missing
       when: not k3s_yaml_status.stat.exists
       block:
-        - name: Copy k3s.yaml from Master Node to Localhost
-          shell: |
-            scp -o StrictHostKeyChecking=no {{ ansible_user }}@{{ k3s_master_ip }}:/etc/rancher/k3s/k3s.yaml /tmp/k3s.yaml
-          become: true
-          delegate_to: localhost  # Delegate to localhost to run the command on the machine running Ansible
+        - name: Rsync k3s.yaml from Master Node to Worker Node
+          command: >
+            rsync -avz -e "ssh -o StrictHostKeyChecking=no -i {{ ansible_ssh_private_key_file }}" 
+            {{ ansible_user }}@{{ k3s_master_ip }}:/etc/rancher/k3s/k3s.yaml /tmp/k3s.yaml
+          delegate_to: localhost  # This command will run on localhost but transfer the file from Master to Worker
 
         - name: Copy k3s.yaml from Localhost to Worker Node
           copy:
