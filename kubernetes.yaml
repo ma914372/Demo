@@ -40,8 +40,9 @@
   hosts: worker
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact
-    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact for master IP
+    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact for token
+    ansible_user: "{{ hostvars[groups['master'][0]].ansible_ssh_user }}"  # Reference SSH user for master node
 
   tasks:
     - name: Install K3s Agent on Worker Node
@@ -68,21 +69,20 @@
     - name: Retrieve k3s.yaml from Master Node if missing
       when: not k3s_yaml_status.stat.exists
       block:
-        - name: Fetch k3s.yaml from Master Node
-          fetch:
-            src: /etc/rancher/k3s/k3s.yaml
-            dest: /tmp/k3s.yaml
-            flat: yes
-          delegate_to: "{{ hostvars[groups['master'][0]].ansible_host }}"  # Delegate to master node using ansible_host
+        - name: Copy k3s.yaml from Master Node to Localhost
+          shell: |
+            scp -o StrictHostKeyChecking=no {{ ansible_user }}@{{ k3s_master_ip }}:/etc/rancher/k3s/k3s.yaml /tmp/k3s.yaml
+          become: true
+          delegate_to: localhost  # Delegate to localhost to run the command on the machine running Ansible
 
-        - name: Place k3s.yaml on Worker Node
+        - name: Copy k3s.yaml from Localhost to Worker Node
           copy:
             src: /tmp/k3s.yaml
             dest: /etc/rancher/k3s/k3s.yaml
             mode: 0644
           become: true
 
-    - name: Update K3s config to point to Master Node IP
+    - name: Update k3s.yaml on Worker Node to point to Master Node IP
       shell: |
         sudo sed -i "s/localhost/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
       when: k3s_yaml_status.stat.exists
