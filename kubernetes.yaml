@@ -64,21 +64,32 @@
         path: /etc/rancher/k3s/k3s.yaml
       register: k3s_yaml_status
 
+    - name: Retrieve k3s.yaml from Master Node if missing
+      when: not k3s_yaml_status.stat.exists
+      block:
+        - name: Copy k3s.yaml from Master Node
+          fetch:
+            src: /etc/rancher/k3s/k3s.yaml
+            dest: /tmp/k3s.yaml
+            flat: yes
+
+        - name: Place k3s.yaml on Worker Node
+          copy:
+            src: /tmp/k3s.yaml
+            dest: /etc/rancher/k3s/k3s.yaml
+            mode: 0644
+
     - name: Update K3s config to point to Master Node IP
       shell: |
         sudo sed -i "s/localhost/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
       when: k3s_yaml_status.stat.exists
-      args:
-        creates: /etc/rancher/k3s/k3s.yaml
 
 - name: Verify Worker Node Joins Cluster
   hosts: worker
   become: true
   tasks:
     - name: Check K3s node status
-      command: /usr/local/bin/k3s kubectl get nodes
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      command: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
       register: k3s_node_status
 
     - name: Show Worker Node Status
