@@ -3,6 +3,12 @@
   hosts: all
   become: yes
   tasks:
+    - name: Remove conflicting curl-minimal package
+      dnf:
+        name: curl-minimal
+        state: absent
+      ignore_errors: yes  # In case the package is not installed, ignore the error
+
     - name: Install dependencies (curl, iproute) using dnf
       dnf:
         name:
