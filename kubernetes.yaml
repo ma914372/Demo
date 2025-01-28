@@ -59,9 +59,15 @@
         state: started
         enabled: yes
 
+    - name: Check if k3s.yaml exists
+      stat:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: k3s_yaml_status
+
     - name: Update K3s config to point to Master Node IP
       shell: |
         sudo sed -i "s/localhost/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
+      when: k3s_yaml_status.stat.exists
       args:
         creates: /etc/rancher/k3s/k3s.yaml
 
