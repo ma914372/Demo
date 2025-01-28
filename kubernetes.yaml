@@ -1,4 +1,4 @@
-----
+---
 - name: Install K3s on Master Nodes
   hosts: master
   become: true
