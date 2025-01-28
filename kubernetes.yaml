@@ -1,13 +1,15 @@
 - name: Install Kubernetes on all nodes
   hosts: all
   become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3  # Use Python 3 interpreter for Ansible tasks
   tasks:
-    - name: Update yum package cache
-      yum:
+    - name: Update dnf package cache
+      dnf:
         update_cache: yes
 
     - name: Install Docker
-      yum:
+      dnf:
         name: docker
         state: present
 
@@ -33,7 +35,7 @@
         warn: false
 
     - name: Install Kubernetes components
-      yum:
+      dnf:
         name:
           - kubeadm
           - kubelet
@@ -110,4 +112,3 @@
 
     - name: Join worker nodes to the Kubernetes cluster
       shell: "{{ kubeadm_join_command }}"
-
