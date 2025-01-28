@@ -3,19 +3,20 @@
   hosts: all
   become: yes
   tasks:
+    # Ensure curl-minimal is removed first to prevent conflicts
+    - name: Remove conflicting curl-minimal package
+      dnf:
+        name: curl-minimal
+        state: absent
+      ignore_errors: yes  # In case the package is not installed, ignore the error
+
+    # Install dependencies (curl, iproute) using dnf
     - name: Install dependencies (curl, iproute) using dnf
       dnf:
         name:
           - curl
           - iproute
         state: present
-
-    # Remove conflicting curl-minimal package (if installed)
-    - name: Remove conflicting curl-minimal package
-      dnf:
-        name: curl-minimal
-        state: absent
-      ignore_errors: yes  # In case the package is not installed, ignore the error
 
     # Install K3s on Master Node
     - name: Install K3s on Master Node
@@ -42,36 +43,4 @@
     - name: Display K3s Token
       when: inventory_hostname in groups['master']
       debug:
-        msg: "The K3s token for worker nodes: {{ k3s_token.stdout }}"
-
-    # Change permissions of /etc/rancher/k3s/k3s.yaml
-    - name: Change permission of K3s kubeconfig file
-      when: inventory_hostname in groups['master']
-      file:
-        path: /etc/rancher/k3s/k3s.yaml
-        mode: '0644'
-        state: file
-
-    # Copy K3s Kubeconfig to Local Machine
-    - name: Copy K3s Kubeconfig to Local Machine
-      when: inventory_hostname in groups['master']
-      copy:
-        src: /etc/rancher/k3s/k3s.yaml
-        dest: /home/ansible/k3s_master_kubeconfig
-        remote_src: yes
-        mode: '0644'
-
-    # Install K3s Agent on Worker Nodes
-    - name: Install K3s Agent on Worker Nodes
-      when: inventory_hostname in groups['worker']
-      shell: |
-        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['master'][0]].ansible_host }}:6443 K3S_TOKEN={{ hostvars[groups['master'][0]].k3s_token.stdout }} sh -
-      args:
-        creates: /usr/local/bin/k3s
-
-    - name: Enable K3s Agent service on Worker Nodes
-      when: inventory_hostname in groups['worker']
-      systemd:
-        name: k3s-agent
-        enabled: yes
-        state: started
+        msg: "The K3
