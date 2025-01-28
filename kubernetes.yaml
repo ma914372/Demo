@@ -23,7 +23,7 @@
         delay: 10
         timeout: 300
 
-- name: Generate K3s Token for Worker Nodes
+- name: Generate K3s Token and Set Master IP
   hosts: master
   become: true
   tasks:
@@ -31,12 +31,17 @@
       command: /usr/local/bin/k3s token create
       register: k3s_token
 
+    - name: Set Master IP and Token
+      set_fact:
+        k3s_master_ip: "{{ ansible_host }}"
+        k3s_token: "{{ k3s_token.stdout }}"
+
 - name: Install K3s Agent on Worker Nodes
   hosts: worker
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].ansible_host }}"  # Dynamically get the first master IP from inventory
-    k3s_token: "{{ hostvars['master'].k3s_token.stdout }}"  # Get the token generated on master node
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact
+    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact
 
   tasks:
     - name: Install K3s Agent on Worker Node
