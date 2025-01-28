@@ -140,10 +140,17 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_ansible -N "" -q
           PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
-          EOF
           
-          # Store the generated public key into an environment variable (from the local machine)
-          ANSIBLE_PUBLIC_KEY=$(cat ~/.ssh/id_rsa_ansible.pub)
+          
+          # Output the public key to a temporary file
+          echo "$PUBLIC_KEY" > ~/ansible_public_key.pub
+          EOF
+
+          # Copy the public key back to the local machine (to set as GitHub environment variable)
+          scp -i ~/.ssh/id_rsa ec2-user@${ANSIBLE_IP}:~/ansible_public_key.pub ./ansible_public_key.pub
+
+          # Set the public key as a GitHub Actions environment variable
+          echo "ANSIBLE_PUBLIC_KEY=$(cat ./ansible_public_key.pub)" >> $GITHUB_ENV
 
           # Copy the SSH public key to each master node using `ssh` with the identity file
           for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
