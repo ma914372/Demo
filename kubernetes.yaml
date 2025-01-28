@@ -9,15 +9,8 @@
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Replace 'localhost' with Master Node IP in k3s.yaml
-      shell: sudo sed -i "s/localhost/{{ ansible_host }}/g" /etc/rancher/k3s/k3s.yaml
-      args:
-        executable: /bin/bash
-
     - name: Set correct permissions for k3s.yaml
-      file:
-        path: /etc/rancher/k3s/k3s.yaml
-        mode: '0644'
+      command: sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for K3s Server to Start on Master Node
   hosts: master
@@ -54,6 +47,9 @@
     - name: Install K3s Agent on Worker Node
       shell: |
         curl -sfL https://get.k3s.io | K3S_URL="https://{{ k3s_master_ip }}:6443" K3S_TOKEN="{{ k3s_token }}" sh -
+      environment:
+        K3S_TOKEN: "{{ k3s_token }}"
+        K3S_URL: "https://{{ k3s_master_ip }}:6443"
       args:
         creates: /usr/local/bin/k3s
 
@@ -63,12 +59,18 @@
         state: started
         enabled: yes
 
+    - name: Update K3s config to point to Master Node IP
+      shell: |
+        sudo sed -i "s/localhost/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
+      args:
+        creates: /etc/rancher/k3s/k3s.yaml
+
 - name: Verify Worker Node Joins Cluster
   hosts: worker
   become: true
   tasks:
     - name: Check K3s node status
-      shell: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
+      command: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
       register: k3s_node_status
 
     - name: Show Worker Node Status
@@ -80,7 +82,7 @@
   become: true
   tasks:
     - name: Check the status of K3s cluster
-      shell: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
+      command: /usr/local/bin/k3s kubectl get nodes
       register: k3s_status
 
     - name: Show K3s status
