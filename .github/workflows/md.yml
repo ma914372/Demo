@@ -183,6 +183,10 @@ jobs:
           which ansible
           /usr/bin/git clone https://github.com/ma914372/Demo /tmp/repo
           cd /tmp/repo
+          sudo yum update -y
+          sudo yum install -y python3 python3-pip
+          sudo pip3 install "ansible==2.9.27"  # Replace with your desired version
+          sudo yum install -y git
           /usr/local/bin/ansible-playbook -i ~/inventory.ini ansible/kubernetes.yaml
           /usr/local/bin/ansible-playbook -i ~/inventory.ini ansible/argocd.yaml
           EOF
