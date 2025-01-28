@@ -73,7 +73,7 @@
             src: /etc/rancher/k3s/k3s.yaml
             dest: /tmp/k3s.yaml
             flat: yes
-          delegate_to: "{{ hostvars['master'][0].ansible_host }}"  # Fetch from master node
+          delegate_to: "{{ hostvars[groups['master'][0]].ansible_host }}"  # Delegate to master node using ansible_host
 
         - name: Place k3s.yaml on Worker Node
           copy:
