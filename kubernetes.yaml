@@ -3,8 +3,8 @@
   hosts: all
   become: yes
   tasks:
-    - name: Install required packages on Amazon Linux
-      yum:
+    - name: Install required packages on Amazon Linux using dnf
+      dnf:
         name:
           - curl
           - wget
@@ -22,8 +22,8 @@
         regexp: '^.*swap.*'
         state: absent
 
-    - name: Install Docker on Amazon Linux
-      yum:
+    - name: Install Docker on Amazon Linux using dnf
+      dnf:
         name: docker
         state: present
 
@@ -33,8 +33,8 @@
         state: started
         enabled: yes
 
-    - name: Install dependencies for Kubernetes
-      yum:
+    - name: Install dependencies for Kubernetes using dnf
+      dnf:
         name:
           - kubelet
           - kubeadm
@@ -49,6 +49,12 @@
       loop:
         - kubelet
         - docker
+
+    - name: Ensure kubectl is accessible
+      command: kubectl version --client
+      register: kubectl_version
+      failed_when: kubectl_version.rc != 0
+      changed_when: False
 
 - name: Initialize the First Kubernetes Master Node
   hosts: master1
