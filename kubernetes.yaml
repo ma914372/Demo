@@ -76,7 +76,9 @@
   become: true
   tasks:
     - name: Check K3s node status
-      command: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
+      command: /usr/local/bin/k3s kubectl get nodes
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: k3s_node_status
 
     - name: Show Worker Node Status
