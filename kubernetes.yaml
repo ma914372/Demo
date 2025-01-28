@@ -1,4 +1,5 @@
-- name: Install Kubernetes on all nodes
+---
+- name: Install K3s on all nodes
   hosts: all
   become: yes
   vars:
@@ -8,107 +9,79 @@
       dnf:
         update_cache: yes
 
-    - name: Install Docker
-      dnf:
-        name: docker
-        state: present
-
-    - name: Start and enable Docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Install Kubernetes repo
-      shell: |
-        cat <<EOF > /etc/yum.repos.d/kubernetes.repo
-        [kubernetes]
-        name=Kubernetes
-        baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-        enabled=1
-        gpgcheck=1
-        repo_gpgcheck=1
-        gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-        exclude=kube*
-        EOF
-      args:
-        warn: false
-
-    - name: Install Kubernetes components
+    - name: Install dependencies
       dnf:
         name:
-          - kubeadm
-          - kubelet
-          - kubectl
+          - curl
+          - wget
+          - vim
         state: present
-        enablerepo: kubernetes
 
-    - name: Enable and start kubelet service
+    - name: Download and install K3s
+      shell: |
+        curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s  # Check if k3s is already installed
+
+    - name: Enable and start K3s service
       service:
-        name: kubelet
+        name: k3s
         state: started
         enabled: yes
 
-    - name: Disable swap (required by kubelet)
-      shell: |
-        swapoff -a
-        sed -i '/ swap / s/^/#/' /etc/fstab
+    - name: Check if K3s is installed and running
+      shell: k3s --version
+      register: k3s_version
+      ignore_errors: yes
 
-    - name: Enable required kernel modules
-      shell: |
-        modprobe br_netfilter
-        echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
-        echo '1' > /proc/sys/net/ipv4/ip_forward
+    - name: Show K3s version
+      debug:
+        msg: "K3s Version: {{ k3s_version.stdout }}"
+      when: k3s_version is defined
 
-    - name: Configure sysctl for networking
-      copy:
-        content: |
-          net.bridge.bridge-nf-call-ip6tables = 1
-          net.bridge.bridge-nf-call-iptables = 1
-          net.ipv4.ip_forward = 1
-        dest: /etc/sysctl.d/k8s.conf
-      notify: Reload sysctl
-
-  handlers:
-    - name: Reload sysctl
-      command: sysctl --system
-
-- name: Initialize Kubernetes master
+- name: Initialize Kubernetes master (for the master node)
   hosts: master
   become: yes
   tasks:
-    - name: Initialize the Kubernetes master node
-      shell: kubeadm init --pod-network-cidr=192.168.0.0/16
-      register: kubeadm_init
+    - name: Check if K3s is installed
+      shell: k3s --version
+      register: k3s_version
       ignore_errors: yes
 
-    - name: Set up kubeconfig for the master node
+    - name: Initialize the K3s cluster as master
       shell: |
-        mkdir -p $HOME/.kube
-        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-        chown $(id -u):$(id -g) $HOME/.kube/config
-      when: kubeadm_init is successful
+        curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE="644" sh -
+      when: k3s_version.rc != 0  # Only install K3s on master if it's not already installed
 
-    - name: Retrieve the kubeadm join token
-      shell: kubeadm token create --print-join-command
-      register: join_command
-      when: kubeadm_init is successful
+    - name: Save K3s token (for joining worker nodes)
+      shell: cat /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+      when: k3s_version.rc == 0
 
-    - name: Install Calico networking plugin
-      shell: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-      when: kubeadm_init is successful
+    - name: Save the K3s token for joining worker nodes
+      set_fact:
+        k3s_token: "{{ k3s_token.stdout }}"
+      when: k3s_version.rc == 0
 
-- name: Join worker nodes to the Kubernetes cluster
+- name: Join worker nodes to the K3s cluster
   hosts: worker
   become: yes
   tasks:
-    - name: Wait for master to generate join command
-      pause:
-        minutes: 1
+    - name: Check if K3s is installed
+      shell: k3s --version
+      register: k3s_version
+      ignore_errors: yes
 
-    - name: Retrieve the join command from the master node
-      set_fact:
-        kubeadm_join_command: "{{ hostvars['master'].join_command.stdout }}"
+    - name: Join worker node to K3s cluster
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars['master'].ansible_facts.default_ipv4.address }}:6443 K3S_TOKEN={{ hostvars['master'].k3s_token }} sh -
+      when: k3s_version.rc != 0  # Only install K3s on worker if it's not already installed
 
-    - name: Join worker nodes to the Kubernetes cluster
-      shell: "{{ kubeadm_join_command }}"
+    - name: Check worker node status
+      shell: kubectl get nodes
+      register: k8s_node_status
+      failed_when: "'Ready' not in k8s_node_status.stdout"
+
+    - name: Show K3s worker node status
+      debug:
+        msg: "K3s worker node status: {{ k8s_node_status.stdout }}"
