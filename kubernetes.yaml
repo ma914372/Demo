@@ -1,92 +1,86 @@
 ---
-- name: Install K3s on Master Node
-  hosts: master
-  become: yes
+- name: Install K3s Cluster (Master and Worker Nodes)
+  hosts:
+    - masters
+    - workers
+  become: true
   tasks:
-    # Remove conflicting curl-minimal package (if installed)
+
+    # Step 1: Remove conflicting curl-minimal package (if installed)
     - name: Remove conflicting curl-minimal package
       dnf:
         name: curl-minimal
         state: absent
-      ignore_errors: yes  # In case the package is not installed, ignore the error
+      when: ansible_facts.packages['curl-minimal'] is defined
+      ignore_errors: true
 
-    # Install dependencies (curl, iproute) using dnf
-    - name: Install dependencies (curl, iproute) using dnf
+    # Step 2: Install dependencies (curl, iproute)
+    - name: Install dependencies (curl, iproute)
       dnf:
         name:
           - curl
           - iproute
         state: present
 
-    # Install K3s Server on Master Node
+    # Step 3: Install K3s Server on Master Nodes
     - name: Install K3s Server on Master Node
       shell: |
         curl -sfL https://get.k3s.io | sh -
+      when: "'masters' in group_names"
       args:
         creates: /usr/local/bin/k3s
 
-    # Wait for the K3s server to start
+    # Step 4: Wait for K3s Server to start
     - name: Wait for K3s Server to start
-      command: /usr/local/bin/k3s kubectl get nodes
-      register: k3s_status
-      until: k3s_status.rc == 0
-      retries: 10
-      delay: 5
+      wait_for:
+        port: 6443
+        host: "{{ inventory_hostname }}"
+        delay: 10
+        timeout: 300
+      when: "'masters' in group_names"
 
-    # Generate the K3s token for worker nodes to join
+    # Step 5: Generate K3s token for worker nodes
     - name: Generate K3s token
-      command: /usr/local/bin/k3s token create --node-name {{ inventory_hostname }}
+      shell: /usr/local/bin/k3s token create
       register: k3s_token
-      changed_when: false
+      when: "'masters' in group_names"
 
-    # Set the K3s token for use by worker nodes
-    - name: Set K3s token for worker nodes
-      set_fact:
-        k3s_token: "{{ k3s_token.stdout }}"
-    
-    # Debug the K3s token
-    - name: Debug the K3s installation token
-      debug:
-        msg: "The K3s token for worker nodes is: {{ k3s_token }}"
-
-- name: Install K3s Agent on Worker Nodes
-  hosts: worker
-  become: yes
-  tasks:
-    # Remove conflicting curl-minimal package (if installed)
-    - name: Remove conflicting curl-minimal package
-      dnf:
-        name: curl-minimal
-        state: absent
-      ignore_errors: yes  # In case the package is not installed, ignore the error
-
-    # Install dependencies (curl, iproute) using dnf
-    - name: Install dependencies (curl, iproute) using dnf
-      dnf:
-        name:
-          - curl
-          - iproute
-        state: present
-
-    # Install K3s Agent on Worker Nodes
+    # Step 6: Install K3s Agent on Worker Nodes
     - name: Install K3s Agent on Worker Nodes
       shell: |
-        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['master'][0]].ansible_host }}:6443 K3S_TOKEN={{ hostvars[groups['master'][0]].k3s_token }} sh -
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars[groups['masters'][0]].ansible_host }}:6443 K3S_TOKEN={{ k3s_token.stdout }} sh -
+      when: "'workers' in group_names"
       args:
         creates: /usr/local/bin/k3s
 
-    # Wait for the K3s agent to register with the server
-    - name: Wait for the K3s Agent to register
-      command: /usr/local/bin/k3s kubectl get nodes
-      register: k3s_agent_status
-      until: k3s_agent_status.rc == 0
-      retries: 10
-      delay: 5
-
-    # Enable K3s Agent service on Worker Nodes
+    # Step 7: Enable K3s Agent service on Worker Nodes
     - name: Enable K3s Agent service on Worker Nodes
       systemd:
         name: k3s-agent
-        enabled: yes
+        enabled: true
         state: started
-      ignore_errors: yes  # Ignore errors if the service doesn't exist
+      when: "'workers' in group_names"
+
+    # Step 8: Enable K3s Server service on Master Nodes
+    - name: Enable K3s Server service on Master Nodes
+      systemd:
+        name: k3s
+        enabled: true
+        state: started
+      when: "'masters' in group_names"
+
+    # Step 9: Set correct permissions for kubeconfig file
+    - name: Set correct permissions for /etc/rancher/k3s/k3s.yaml
+      file:
+        path: /etc/rancher/k3s/k3s.yaml
+        mode: '0644'
+      when: "'masters' in group_names or 'workers' in group_names"
+
+    # Step 10: Check for K3s version to verify installation
+    - name: Check K3s version
+      shell: /usr/local/bin/k3s --version
+      register: k3s_version
+      ignore_errors: true
+    - debug:
+        msg: "K3s Version: {{ k3s_version.stdout }}"
+      when: k3s_version.stdout is defined
