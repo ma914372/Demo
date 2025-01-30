@@ -20,4 +20,15 @@
 
     - name: Wait for 120 seconds using sleep
       command: sleep 120
+    
+    - name: Extract Argo CD HTTPS port from Kubernetes service
+      command: >
+        kubectl get svc argocd-server -n argocd -o=jsonpath='{.spec.ports[1].nodePort}'
+      register: argocd_https_port
+
+    - name: Save the port number to a file
+      copy:
+        content: "{{ argocd_https_port.stdout }}"
+        dest: "/tmp/argocd_https_port.txt"
+        mode: '0644'
 
