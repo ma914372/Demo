@@ -12,5 +12,12 @@
     - name: Install Argo CD using kubectl
       shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    - name: Expose Argo CD server via port-forwarding (optional)
-      shell: kubectl port-forward svc/argocd-server -n argocd 8080:443
+    - name: Configure Git Repo
+      shell: kubectl apply -n argocd -f secret.yml
+
+    - name: Deploy argocd apps
+      shell: kubectl apply -n argocd -f application.yaml
+
+    - name: Wait for 120 seconds using sleep
+      command: sleep 120
+
