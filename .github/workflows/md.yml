@@ -202,3 +202,17 @@ jobs:
           /usr/local/bin/ansible-playbook -i ~/inventory.ini /tmp/repo/kubernetes.yaml
           /usr/local/bin/ansible-playbook -i ~/inventory.ini /tmp/repo/argocd.yml
           EOF
+  
+  create-webhook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Ansible
+        run: sudo apt update && sudo apt install -y ansible
+
+      - name: Run Ansible Playbook
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ansible-playbook webhook.yml
