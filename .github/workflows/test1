@@ -1,0 +1,24 @@
+
+  webhook:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure GitHub webhook for Argo CD
+      - name: Create GitHub Webhook for Argo CD
+        uses: community.general.github_webhook@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repo: "ma914372/argocd"  # Replace with your GitHub repository
+          name: "web"
+          config: |
+            {
+              "url": "https://54.210.180.249:30963/api/webhook",  # Replace with your ArgoCD API URL
+              "content_type": "json"
+            }
+          events:
+            - "push"
+          active: true
