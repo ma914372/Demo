@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-application
+  namespace: argocd  # Ensure this is in the argocd namespace
+spec:
+  project: default  # The ArgoCD project
+  source:
+    repoURL: https://github.com/ma914372/argocd.git  # The GitHub repository URL
+    targetRevision: main  # Specify your main branch here
+    path: "."  # Path to the application in the repository (adjust if necessary)
+  destination:
+    server: https://kubernetes.default.svc  # The Kubernetes cluster URL (default is used here)
+    namespace: nginx  # The namespace in which to deploy the app (ensure the nginx namespace exists)
+  syncPolicy:
+    automated:
+      prune: true  # Automatically remove resources that are no longer defined in the Git repository
+      selfHeal: true  # Auto-sync to correct any differences between the Git repository and the cluster
+    syncOptions:
+      - CreateNamespace=true  # This will create the namespace if it doesn't already exist
