@@ -41,9 +41,9 @@
         mode: '0644'
 
     - name: Extract Argo CD admin password from Kubernetes secret
-      command: >
-        kubectl get secret argocd-initial-admin-secret -n argocd -o=jsonpath="{.data.password}" | base64 --decode
+      shell: kubectl get secret argocd-initial-admin-secret -n argocd -o=jsonpath='{.data.password}' | base64 --decode
       register: argocd_admin_password
+
 
     - name: Save the Argo CD admin password to a file
       copy:
