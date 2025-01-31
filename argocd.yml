@@ -57,4 +57,4 @@
         dest: /tmp/webhook.sh           # Temporary location on the master node
 
     - name: Run webhook.sh script
-      command: /bin/bash /tmp/webhook.sh
+      shell: sh /tmp/webhook.sh
