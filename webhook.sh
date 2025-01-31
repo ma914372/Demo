@@ -29,5 +29,5 @@ curl -k -X POST \
   https://api.github.com/repos/ma914372/argocd/hooks
 
 # Clean up the temporary files from /tmp
-rm -f /tmp/secret.yml
-rm -f /tmp/application.yml
+sudo rm -f /tmp/secret.yml
+sudo rm -f /tmp/application.yml
