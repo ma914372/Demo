@@ -10,9 +10,7 @@
         kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml &&
         kubectl rollout status -n argocd deployment --timeout=300s --watch &&
         kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
-    - name: Redirect content to a temporary file on the master node
-      shell: "echo '{{ secrets.ARGOCD_SECRET_YML }}' > /tmp/repo/secret.yml"
-
+    
     - name: Copy Git Repo Secret file to the master node
       copy:
         src:  /tmp/secret.yml       # Path on your local Ansible machine
