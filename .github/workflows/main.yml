@@ -107,7 +107,7 @@ jobs:
 
       # Step 3: Download the Terraform output file
       - name: Download Terraform Output File
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: terraform_output_file
 
