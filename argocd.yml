@@ -50,3 +50,11 @@
         content: "{{ argocd_admin_password.stdout }}"
         dest: "/tmp/argocd_admin_password.txt"
         mode: '0644'
+
+    - name: Copy Git Repo Secret file to the master node
+      copy:
+        src:  /tmp/repo/webhook.sh       # Path on your local Ansible machine
+        dest: /tmp/webhook.sh           # Temporary location on the master node
+
+    - name: Run webhook.sh script
+      command: /bin/bash /tmp/webhook.sh
