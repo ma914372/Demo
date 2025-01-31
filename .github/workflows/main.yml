@@ -219,5 +219,6 @@ jobs:
           sudo apt update -y
           sudo apt install -y ansible  # Replace with your desired version
           sudo apt install -y git
+          ansible-galaxy collection install community.kubernetes
           /usr/bin/git clone https://github.com/ma914372/Demo.git /tmp/repo
           /usr/bin/ansible-playbook -i ~/inventory.ini /tmp/repo/kubernetes.yaml
