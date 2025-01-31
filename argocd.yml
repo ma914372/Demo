@@ -13,7 +13,7 @@
 
     - name: Copy Git Repo Secret file to the master node
       copy:
-        src: /tmp/repo/secret.yml        # Path on your local Ansible machine
+        src: {{secrets.ARGOCD_SECRET_YML}} >/tmp/repo/secret.yml        # Path on your local Ansible machine
         dest: /tmp/secret.yml           # Temporary location on the master node
 
     - name: Configure Git Repo
