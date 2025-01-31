@@ -42,13 +42,13 @@
         dest: "/tmp/argocd_https_port.txt"
         mode: '0644'
 
-   - name: Extract Argo CD admin password from Kubernetes secret
-     command: >
-       kubectl get secret argocd-initial-admin-secret -n argocd -o=jsonpath="{.data.password}" | base64 --decode
-     register: argocd_admin_password
+    - name: Extract Argo CD admin password from Kubernetes secret
+      command: >
+        kubectl get secret argocd-initial-admin-secret -n argocd -o=jsonpath="{.data.password}" | base64 --decode
+      register: argocd_admin_password
 
-   - name: Save the Argo CD admin password to a file
-     copy:
-       content: "{{ argocd_admin_password.stdout }}"
-       dest: "/tmp/argocd_admin_password.txt"
-       mode: '0644'
+    - name: Save the Argo CD admin password to a file
+      copy:
+        content: "{{ argocd_admin_password.stdout }}"
+        dest: "/tmp/argocd_admin_password.txt"
+        mode: '0644'
