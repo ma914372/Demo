@@ -58,9 +58,11 @@ jobs:
           MASTER_IPS=$(terraform output -raw master_node_ip || echo "")
           WORKER_IPS=$(terraform output -raw worker_node_ips || echo "")
           ANSIBLE_IP=$(terraform output -raw ansible_node_ip || echo "")
+          MASTER_PRIVATE_IP=$(terraform output -raw master_private_ip || echo "")
+          WORKER_PRIVATE_IP=$(terraform output -raw worker_private_ips || echo "")
 
           # Check if any of the outputs are missing or empty
-          if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ]; then
+          if [ -z "$MASTER_IPS" ] || [ -z "$WORKER_IPS" ] || [ -z "$ANSIBLE_IP" ] || [ -z "$MASTER_PRIVATE_IP" ] || [ -z "$WORKER_PRIVATE_IP" ] ; then
             echo "Error: One or more Terraform outputs are missing or empty."
             exit 1
           fi
@@ -69,11 +71,16 @@ jobs:
           echo "MASTER_IPS=$MASTER_IPS" > terraform_output.txt
           echo "WORKER_IPS=$WORKER_IPS" >> terraform_output.txt
           echo "ANSIBLE_IP=$ANSIBLE_IP" >> terraform_output.txt
+          echo "MASTER_PRIVATE_IP=$MASTER_PRIVATE_IP" >> terraform_output.txt
+          echo "WORKER_PRIVATE_IP=$WORKER_PRIVATE_IP" >> terraform_output.txt
 
           # Print the IPs to the log
           echo "Master IPs: $MASTER_IPS"
           echo "Worker IPs: $WORKER_IPS"
           echo "Ansible IP: $ANSIBLE_IP"
+          echo "Private_Master_IP: $MASTER_PRIVATE_IP"
+          echo "Private_Worker_IP: $WORKER_PRIVATE_IP"
+          
 
       # Upload the file as an artifact so it can be accessed in the next job
       - name: Upload Terraform Output File
@@ -110,11 +117,19 @@ jobs:
           MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
           WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          MASTER_PRIVATE_IP=$(cat terraform_output.txt | grep "MASTER_PRIVATE_IP" | cut -d'=' -f2)
+          WORKER_PRIVATE_IP=$(cat terraform_output.txt | grep "WORKER_PRIVATE_IP" | cut -d'=' -f2)
+          
+          
+          
 
           # Debugging to ensure the variables are set correctly
           echo "MASTER_IPS: $MASTER_IPS"
           echo "WORKER_IPS: $WORKER_IPS"
           echo "ANSIBLE_IP: $ANSIBLE_IP"
+          echo "MASTER_PRIVATE_IP: $MASTER_PRIVATE_IP
+          echo "WORKER_PRIVATE_IP: $WORKER_PRIVATE_IP
+          
 
       # Step 5: Configure SSH Access
       - name: Configure SSH Access
@@ -173,14 +188,18 @@ jobs:
           MASTER_IPS=$(cat terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
           WORKER_IPS=$(cat terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          MASTER_PRIVATE_IP=$(cat terraform_output.txt | grep "MASTER_PRIVATE_IP" | cut -d'=' -f2)
+          WORKER_PRIVATE_IP=$(cat terraform_output.txt | grep "WORKER_PRIVATE_IP" | cut -d'=' -f2)
           scp -i ~/.ssh/id_rsa terraform_output.txt ec2-user@${ANSIBLE_IP}:~/terraform_output.txt
+          
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${ANSIBLE_IP} << 'EOF'
           MASTER_IPS=$(cat ~/terraform_output.txt | grep "MASTER_IPS" | cut -d'=' -f2)
           WORKER_IPS=$(cat ~/terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
+          
           echo "[master]" > ~/inventory.ini
-          for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
-            echo "$master ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ~/inventory.ini
-          done
+          echo "\$MASTER_IPS ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible \
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no' private_ip=\$MASTER_PRIVATE_IP" >> ~/inventory.ini  
+          
           echo "[worker]" >> ~/inventory.ini
           for worker in $(echo "$WORKER_IPS" | tr "," "\n"); do
             echo "$worker ansible_ssh_user=ec2-user ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ~/inventory.ini
@@ -195,7 +214,6 @@ jobs:
           mkdir -p /tmp/repo
           cd /tmp/repo
           sudo yum update -y
-          sudo yum install -y python3 python3-pip
           sudo pip3 install "ansible==2.9.27"  # Replace with your desired version
           sudo yum install -y git
           /usr/bin/git clone https://github.com/ma914372/Demo.git /tmp/repo
