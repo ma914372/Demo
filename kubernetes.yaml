@@ -15,9 +15,9 @@
   hosts: master
   become: true
   tasks:
-    - name: Wait for K3s to start on the Master Node
+    - name: Wait for Kubernetes API to be accessible
       wait_for:
-        host: "{{ ansible_host }}"
+        host: "{{ hostvars[groups['master'][0]].private_ip }}"
         port: 6443
         delay: 10
         timeout: 300
@@ -32,14 +32,24 @@
 
     - name: Set Master IP and Token
       set_fact:
-        k3s_master_ip: "{{ hostvars[groups['master'][0]]['k3s_master_ip'] }}"
+        k3s_master_ip: "{{ hostvars[groups['master'][0]]['private_ip'] }}"
         k3s_token: "{{ k3s_token.stdout }}"
+
+- name: Fetch k3s.yaml from Master Node to Control Machine
+  hosts: master
+  become: false
+  tasks:
+    - name: Copy k3s.yaml from Master to Ansible Control Machine
+      fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /tmp/k3s.yaml
+        flat: yes
 
 - name: Install K3s Agent on Worker Nodes
   hosts: worker
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].k3s_master_ip }}"  # Use the dynamically set fact
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].private_ip }}"  # Use the dynamically set fact
     k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact
 
   tasks:
@@ -62,36 +72,53 @@
       stat:
         path: /etc/rancher/k3s/k3s.yaml
       register: k3s_yaml_status
-      become: true  # Check with elevated permissions
+      become: true
 
-    - name: Retrieve k3s.yaml from Master Node if missing
-      when: not k3s_yaml_status.stat.exists
-      block:
-        - name: Fetch k3s.yaml from Master Node
-          fetch:
-            src: /etc/rancher/k3s/k3s.yaml
-            dest: /tmp/k3s.yaml
-            flat: yes
-          delegate_to: "{{ hostvars[groups['master'][0]].ansible_host }}"  # Delegate to master node using ansible_host
+- name: Upload k3s.yaml from Ansible Control Machine to Worker Nodes
+  hosts: worker
+  become: true
+  vars:
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].private_ip }}"
+  tasks:
+    - name: Ensure the .kube directory exists on Worker Nodes
+      file:
+        path: /home/{{ ansible_ssh_user }}/.kube
+        state: directory
+        mode: '0755'
 
-        - name: Place k3s.yaml on Worker Node
-          copy:
-            src: /tmp/k3s.yaml
-            dest: /etc/rancher/k3s/k3s.yaml
-            mode: 0644
-          become: true
+    - name: Copy k3s.yaml from Control Machine to Worker Nodes
+      copy:
+        src: /tmp/k3s.yaml
+        dest: /home/{{ ansible_ssh_user }}/.kube/k3s.yaml
+        mode: '0644'
 
-    - name: Update K3s config to point to Master Node IP
-      shell: |
-        sudo sed -i "s/127.0.0.1/{{ k3s_master_ip }}/g" /etc/rancher/k3s/k3s.yaml
-      when: k3s_yaml_status.stat.exists
+- name: Update K3s config to point to Master Node IP
+  hosts: worker
+  become: true
+  vars:
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].private_ip }}"
+  tasks:
+    - name: Update server IP in k3s.yaml
+      lineinfile:
+        path: /home/{{ ansible_ssh_user }}/.kube/k3s.yaml
+        regexp: '^    server: https://127.0.0.1:6443$'
+        line: "    server: https://{{ k3s_master_ip }}:6443"
+
+    - name: Verify k3s.yaml exists on Worker Nodes
+      stat:
+        path: /home/{{ ansible_ssh_user }}/.kube/k3s.yaml
+      register: file_status
+
+    - name: Show file existence status
+      debug:
+        msg: "k3s.yaml exists: {{ file_status.stat.exists }}"
 
 - name: Verify Worker Node Joins Cluster
   hosts: worker
   become: true
   tasks:
     - name: Check K3s node status
-      command: KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl get nodes
+      shell: KUBECONFIG=/home/{{ ansible_ssh_user }}/.kube/k3s.yaml kubectl get nodes
       register: k3s_node_status
 
     - name: Show Worker Node Status
