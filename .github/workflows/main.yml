@@ -212,7 +212,9 @@ jobs:
       # Step 8: Run Ansible Playbooks
       - name: Run Ansible Playbooks
         run: |
+          echo "${{secrets.ARGOCD_SECRET_YML}}" > /tmp/secret.yml
           ANSIBLE_IP=$(cat terraform_output.txt | grep "ANSIBLE_IP" | cut -d'=' -f2)
+          scp -i ~/.ssh/id_rsa /tmp/secret.yml ubuntu@${ANSIBLE_IP}:/tmp
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${ANSIBLE_IP} << 'EOF'
           mkdir -p /tmp/repo
           cd /tmp/repo
