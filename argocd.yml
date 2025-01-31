@@ -1,26 +1,34 @@
-- name: Install Argo CD on Kubernetes
+- name: Install Argo CD using kubectl
   hosts: master
   become: yes
   tasks:
     - name: Create a namespace for Argo CD
-      kubectl:
-        name: argocd
-        state: present
-        api_version: v1
-        kind: Namespace
+      shell: kubectl create namespace argocd
 
-    - name: Install Argo CD using kubectl
-      shell: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    - name: Install Argo CD and patch service to NodePort
+      shell: >
+        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml &&
+        kubectl rollout status -n argocd deployment --timeout=300s --watch &&
+        kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
+
+    - name: Copy Git Repo Secret file to the master node
+      copy:
+        src: /tmp/repo/secret.yml        # Path on your local Ansible machine
+        dest: /tmp/secret.yml           # Temporary location on the master node
 
     - name: Configure Git Repo
-      shell: kubectl apply -n argocd -f secret.yml
+      shell: kubectl apply -n argocd -f /tmp/secret.yml
+      become: yes
 
-    - name: Deploy argocd apps
-      shell: kubectl apply -n argocd -f application.yaml
+    - name: Copy Git Repo Secret file to the master node
+      copy:
+        src: /tmp/repo/application.yml        # Path on your local Ansible machine
+        dest: /tmp/application.yml           # Temporary location on the master node
 
-    - name: Wait for 120 seconds using sleep
-      command: sleep 120
-    
+    - name: Configure Git Repo
+      shell: kubectl apply -n argocd -f /tmp/application.yml
+      become: yes
+
     - name: Extract Argo CD HTTPS port from Kubernetes service
       command: >
         kubectl get svc argocd-server -n argocd -o=jsonpath='{.spec.ports[1].nodePort}'
@@ -32,3 +40,13 @@
         dest: "/tmp/argocd_https_port.txt"
         mode: '0644'
 
+   - name: Extract Argo CD admin password from Kubernetes secret
+     command: >
+       kubectl get secret argocd-initial-admin-secret -n argocd -o=jsonpath="{.data.password}" | base64 --decode
+     register: argocd_admin_password
+
+   - name: Save the Argo CD admin password to a file
+     copy:
+       content: "{{ argocd_admin_password.stdout }}"
+       dest: "/tmp/argocd_admin_password.txt"
+       mode: '0644'
