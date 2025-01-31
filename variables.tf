@@ -34,5 +34,5 @@ variable "my-key" {
 
 variable "ami_id" {
   description = "Amazon Linux AMI ID"
-  default = "ami-0ac4dfaf1c5c0cce9"
+  default = "ami-04b4f1a9cf54c11d0"
 }
