@@ -59,3 +59,7 @@
     - name: Run webhook.sh script
       shell: sh /tmp/webhook.sh
       become: yes
+      register: script_output
+
+    - debug:
+      var: script_output.stdout_lines
