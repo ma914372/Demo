@@ -2,20 +2,15 @@
 
 # Get the Argo CD HTTPS port
 PORT=$(cat /tmp/argocd_https_port.txt)
-echo $PORT
 
 # Get the public IP of your machine
 IP=$(curl -s ifconfig.me)
-echo $IP
 
 # Construct the Argo CD webhook URL dynamically
 ARGOCD_URL="https://$IP:$PORT/api/webhook"
-echo $ARGOCD_URL
 
 # Get the GitHub token from the secret file
-grep 'password:' /tmp/secret.yml | awk -F': ' '{print $2}' > /tmp/test.txt
 TOKEN=$(grep 'password:' /tmp/secret.yml | awk -F': ' '{print $2}')
-echo $TOKEN
 
 # Create the webhook on GitHub with SSL verification disabled
 curl -k -X POST \
@@ -32,3 +27,5 @@ curl -k -X POST \
         }
       }' "$ARGOCD_URL")" \
   https://api.github.com/repos/ma914372/argocd/hooks
+
+sudo rm -rf /tmp/secret.yml
