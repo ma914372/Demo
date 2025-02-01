@@ -13,7 +13,8 @@ ARGOCD_URL="https://$IP:$PORT/api/webhook"
 echo $ARGOCD_URL
 
 # Get the GitHub token from the secret file
-TOKEN=$(grep 'password:' secret.yml | awk -F': ' '{print $2}')
+grep 'password:' /tmp/secret.yml | awk -F': ' '{print $2}' > /tmp/test.txt
+TOKEN=$(grep 'password:' /tmp/secret.yml | awk -F': ' '{print $2}')
 echo $TOKEN
 
 # Create the webhook on GitHub with SSL verification disabled
