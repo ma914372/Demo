@@ -49,7 +49,7 @@ jobs:
 
       # Step 7: Apply Terraform Changes
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'  # Only apply on the main branch
+        if: github.ref == 'refs/heads/main'  
         run: terraform apply -auto-approve tfplan
 
       # Step 8: Capture Terraform Outputs and write to file
@@ -126,7 +126,7 @@ jobs:
           
           
 
-          # Debugging to ensure the variables are set correctly
+          # Ensure the variables are set correctly
           echo "MASTER_IPS: $MASTER_IPS"
           echo "WORKER_IPS: $WORKER_IPS"
           echo "ANSIBLE_IP: $ANSIBLE_IP"
