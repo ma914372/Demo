@@ -1,0 +1,47 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch: # Manually triggered
+    inputs:
+      confirm:
+        description: 'Are you sure you want to destroy the infrastructure? (yes/no)'
+        required: true
+        default: 'no'
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Terraform CLI
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+          terraform_wrapper: false
+
+      # Step 3: Configure AWS Credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 4: Terraform Init (initialize the backend)
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${{ secrets.BUCKET_TF_STATE }}" -backend-config="key=terraform.tfstate" -backend-config="region=us-east-1"
+
+      # Step 5: Confirm destruction
+      - name: Confirm destruction
+        if: ${{ github.event.inputs.confirm == 'yes' }}
+        run: terraform destroy -auto-approve -backend-config="bucket=${{ secrets.BUCKET_TF_STATE }}" -backend-config="key=terraform.tfstate" -backend-config="region=us-east-1"
+
+      # Step 6: Notify if the confirmation was not given
+      - name: No confirmation received
+        if: ${{ github.event.inputs.confirm != 'yes' }}
+        run: echo "Destruction not confirmed. Aborting terraform destroy."
