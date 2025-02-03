@@ -7,11 +7,11 @@ terraform {
   }
 }
 provider "aws" {
-    region = "${var.region}"
+    region = var.region
 }
 
 resource "aws_vpc" "demo_vpc" {
-    cidr_block = "${var.vpc_cidr}"
+    cidr_block = var.vpc_cidr
     instance_tenancy = "default"
     enable_dns_support = true
     enable_dns_hostnames = true
@@ -34,7 +34,7 @@ resource "aws_subnet" "kubernetes_subnet" {
 
 resource "aws_subnet" "ansible_subnet" {
   vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr_ansible}"
+  cidr_block              = var.subnet_cidr_ansible
   availability_zone       =  "us-east-1b"
   map_public_ip_on_launch = true
   tags = {
