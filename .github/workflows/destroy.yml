@@ -39,7 +39,7 @@ jobs:
       # Step 5: Confirm destruction
       - name: Confirm destruction
         if: ${{ github.event.inputs.confirm == 'yes' }}
-        run: terraform destroy -auto-approve -backend-config="bucket=${{ secrets.BUCKET_TF_STATE }}" -backend-config="key=terraform.tfstate" -backend-config="region=us-east-1"
+        run: terraform destroy -auto-approve
 
       # Step 6: Notify if the confirmation was not given
       - name: No confirmation received
