@@ -18,7 +18,7 @@
 
     - name: Configure Git Repo
       shell: kubectl apply -n argocd -f /tmp/secret.yml
-      #become: yes
+      
 
     - name: Copy Git Repo application to the master node
       copy:
@@ -27,7 +27,7 @@
 
     - name: Configure Git Repo
       shell: kubectl apply -n argocd -f /tmp/application.yml
-      #become: yes
+      
 
     - name: Extract Argo CD HTTPS port from Kubernetes service
       command: >
@@ -58,7 +58,6 @@
 
     - name: Run webhook.sh script
       shell: sh /tmp/webhook.sh
-      #become: yes
       register: script_output
 
     - debug:
