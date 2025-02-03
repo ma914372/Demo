@@ -49,8 +49,8 @@
   hosts: worker
   become: true
   vars:
-    k3s_master_ip: "{{ hostvars[groups['master'][0]].private_ip }}"  # Use the dynamically set fact
-    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         # Use the dynamically set fact
+    k3s_master_ip: "{{ hostvars[groups['master'][0]].private_ip }}"  
+    k3s_token: "{{ hostvars[groups['master'][0]].k3s_token }}"         
 
   tasks:
     - name: Install K3s Agent on Worker Node
