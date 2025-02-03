@@ -20,7 +20,7 @@ resource "aws_vpc" "demo_vpc" {
     }
 }
 
-# --------------------- Subnets ---------------------
+
 resource "aws_subnet" "kubernetes_subnet" {
   vpc_id                  = aws_vpc.demo_vpc.id
   cidr_block              = var.subnet_cidr
@@ -31,7 +31,7 @@ resource "aws_subnet" "kubernetes_subnet" {
     }
 }
 
-# --------------------- Internet Gateway ---------------------
+
 resource "aws_internet_gateway" "demo_igw" {
   vpc_id = aws_vpc.demo_vpc.id
 
