@@ -38,7 +38,7 @@ resource "aws_subnet" "ansible_subnet" {
   tags = {
     Name = "Ansible-Subnet"
   }
-
+}
 
 resource "aws_internet_gateway" "demo_igw" {
   vpc_id = aws_vpc.demo_vpc.id
@@ -63,7 +63,6 @@ resource "aws_route_table_association" "subnet_association" {
 }
 
 
-}
 resource "aws_route_table_association" "ansible_subnet_association" {
     subnet_id = aws_subnet.ansible_subnet.id
     route_table_id = aws_route_table.demo_route_table.id
