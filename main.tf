@@ -30,6 +30,14 @@ resource "aws_subnet" "kubernetes_subnet" {
   tags = { Name = "Kubernetes-Subnet"
     }
 }
+resource "aws_subnet" "ansible_subnet" {
+  vpc_id                  = aws_vpc.demo_vpc.id
+  cidr_block              = "${var.subnet_cidr_ansible}"
+  availability_zone       =  "us-east-1b"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "Ansible-Subnet"
+  }
 
 
 resource "aws_internet_gateway" "demo_igw" {
@@ -55,14 +63,6 @@ resource "aws_route_table_association" "subnet_association" {
 }
 
 
-resource "aws_subnet" "ansible_subnet" {
-  vpc_id                  = aws_vpc.demo_vpc.id
-  cidr_block              = "${var.subnet_cidr_ansible}"
-  availability_zone       =  "us-east-1b"
-  map_public_ip_on_launch = true
-  tags = {
-    Name = "Ansible-Subnet"
-  }
 }
 resource "aws_route_table_association" "ansible_subnet_association" {
     subnet_id = aws_subnet.ansible_subnet.id
@@ -73,93 +73,93 @@ resource "aws_route_table_association" "ansible_subnet_association" {
 resource "aws_security_group" "kubernetes_master_sg" {
   vpc_id = aws_vpc.demo_vpc.id
 
-  # Allow SSH (22) from anywhere (if needed)
+  
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  # Allow K3s Server-Agent Communication (6444) from Master Node (by CIDR block)
+ 
   ingress {
     from_port   = 6444
     to_port     = 6444
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow K3s Server-Agent Communication (6444) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from master node's subnet
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
-  # Allow K3s Server-Agent Communication (6444) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from master node's subnet
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
-  # Allow Kubernetes API Server (6443) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from worker nodes' subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow Kubelet API (10250) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 10250
     to_port     = 10250
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from worker nodes' subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow K3s Server-Agent Communication (9345) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 9345
     to_port     = 9345
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from worker nodes' subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow Flannel VXLAN (8472) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 8472
     to_port     = 8472
     protocol    = "udp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from worker nodes' subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
-  # Allow etcd Cluster Communication (2379-2380) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 2379
     to_port     = 2380
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow Flannel Data Plane (8285) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 8285
     to_port     = 8285
     protocol    = "udp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from worker nodes' subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow NodePort Communication (30000-32767) from Worker Nodes (by CIDR block)
+  
   ingress {
     from_port   = 30000
     to_port     = 32767
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from worker nodes' subnet
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
-  # Outbound rule to allow all outbound traffic
+  
   egress {
     from_port   = 0
     to_port     = 0
@@ -174,7 +174,7 @@ resource "aws_security_group" "kubernetes_master_sg" {
 resource "aws_security_group" "kubernetes_worker_sg" {
   vpc_id = aws_vpc.demo_vpc.id
 
-  # Allow SSH (22) from anywhere (if needed)
+  
   ingress {
     from_port   = 22
     to_port     = 22
@@ -182,85 +182,85 @@ resource "aws_security_group" "kubernetes_worker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow inbound traffic on port 80 (HTTP) and 443 (HTTPS)
+  
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from anywhere (Internet)
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from anywhere (Internet)
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
-  # Allow communication to the Kubernetes API Server (6443) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
-  # Allow K3s Server-Agent Communication (6444) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 6444
     to_port     = 6444
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow Kubelet Communication (10250) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 10250
     to_port     = 10250
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow K3s Server-Agent Communication (9345) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 9345
     to_port     = 9345
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block] 
   }
 
-  # Allow Flannel VXLAN (8472) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 8472
     to_port     = 8472
     protocol    = "udp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow Flannel Data Plane (8285) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 8285
     to_port     = 8285
     protocol    = "udp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Allow NodePort Communication (30000-32767) from Master Node (by CIDR block)
+ 
   ingress {
     from_port   = 30000
     to_port     = 32767
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow from master node's subnet
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
-  # Allow etcd Cluster Communication (2379-2380) from Master Node (by CIDR block)
+  
   ingress {
     from_port   = 2379
     to_port     = 2380
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  # Allow from master node's subnet
+    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
 
-  # Outbound rule to allow all outbound traffic
+  
   egress {
     from_port   = 0
     to_port     = 0
@@ -284,7 +284,7 @@ resource "aws_security_group" "ansible_sg" {
         from_port = 6443
         to_port = 6443
         protocol = "tcp"
-        cidr_blocks = ["0.0.0.0/0"]
+        cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]
     }
     egress {
         from_port = 0
