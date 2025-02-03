@@ -180,9 +180,10 @@ jobs:
           }
 
           # Step 3: Loop through the master and worker IPs and copy the key
-          for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
-          copy_key_to_node $master
-          done
+          #for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
+          echo "$MASTER_IPS"
+          copy_key_to_node "$MASTER_IPS"
+          #done
 
           for worker in $(echo "$WORKER_IPS" | tr "," "\n"); do
           copy_key_to_node $worker
@@ -202,9 +203,7 @@ jobs:
           WORKER_IPS=$(cat ~/terraform_output.txt | grep "WORKER_IPS" | cut -d'=' -f2)
           MASTER_PRIVATE_IP=$(cat terraform_output.txt | grep "MASTER_PRIVATE_IP" | cut -d'=' -f2)
           
-          echo "[master]" > ~/inventory.ini
-          #echo "\$MASTER_IPS ansible_ssh_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible \
-          #ansible_ssh_common_args='-o StrictHostKeyChecking=no' private_ip=\$MASTER_PRIVATE_IP" >> ~/inventory.ini 
+          echo "[master]" > ~/inventory.ini 
           echo "$MASTER_IPS ansible_ssh_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa_ansible ansible_ssh_common_args='-o StrictHostKeyChecking=no' private_ip=$MASTER_PRIVATE_IP" >> ~/inventory.ini 
           
           echo "[worker]" >> ~/inventory.ini
