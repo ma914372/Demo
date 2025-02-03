@@ -13,8 +13,8 @@
     
     - name: Copy Git Repo Secret file to the master node
       copy:
-        src:  /tmp/secret.yml       # Path on your local Ansible machine
-        dest: /tmp/secret.yml           # Temporary location on the master node
+        src:  /tmp/secret.yml       
+        dest: /tmp/secret.yml           
 
     - name: Configure Git Repo
       shell: kubectl apply -n argocd -f /tmp/secret.yml
@@ -22,8 +22,8 @@
 
     - name: Copy Git Repo Secret file to the master node
       copy:
-        src: /tmp/repo/application.yml        # Path on your local Ansible machine
-        dest: /tmp/application.yml           # Temporary location on the master node
+        src: /tmp/repo/application.yml        
+        dest: /tmp/application.yml          
 
     - name: Configure Git Repo
       shell: kubectl apply -n argocd -f /tmp/application.yml
@@ -53,8 +53,8 @@
 
     - name: Copy Git Repo Secret file to the master node
       copy:
-        src:  /tmp/repo/webhook.sh       # Path on your local Ansible machine
-        dest: /tmp/webhook.sh           # Temporary location on the master node
+        src:  /tmp/repo/webhook.sh       
+        dest: /tmp/webhook.sh           
 
     - name: Run webhook.sh script
       shell: sh /tmp/webhook.sh
