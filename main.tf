@@ -136,12 +136,12 @@ resource "aws_security_group" "kubernetes_master_sg" {
     cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
   }
   
-  ingress {
-    from_port   = 2379
-    to_port     = 2380
-    protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
-  }
+  #ingress {
+    #from_port   = 2379
+    #to_port     = 2380
+    #protocol    = "tcp"
+    #cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
+  #}
 
   
   ingress {
@@ -253,12 +253,12 @@ resource "aws_security_group" "kubernetes_worker_sg" {
   }
 
   
-  ingress {
-    from_port   = 2379
-    to_port     = 2380
-    protocol    = "tcp"
-    cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
-  }
+  #ingress {
+    #from_port   = 2379
+    #to_port     = 2380
+    #protocol    = "tcp"
+    #cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]  
+  #}
 
   
   egress {
