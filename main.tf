@@ -280,12 +280,12 @@ resource "aws_security_group" "ansible_sg" {
         protocol = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
     }
-    ingress {
-        from_port = 6443
-        to_port = 6443
-        protocol = "tcp"
-        cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]
-    }
+    #ingress {
+        #from_port = 6443
+        #to_port = 6443
+        #protocol = "tcp"
+        #cidr_blocks = [aws_subnet.kubernetes_subnet.cidr_block]
+    #}
     egress {
         from_port = 0
         to_port = 0
