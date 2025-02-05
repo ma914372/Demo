@@ -178,7 +178,7 @@ jobs:
           }
 
           # Step 3: Loop through the master and worker IPs and copy the key
-          #for master in $(echo "$MASTER_IPS" | tr "," "\n"); do
+          
           echo "$MASTER_IPS"
           copy_key_to_node "$MASTER_IPS"
           #done
