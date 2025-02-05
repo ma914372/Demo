@@ -1,13 +1,17 @@
 Overview
 This project uses the following tools and services:
 
-. Terraform for provisioning AWS infrastructure.
-. Ansible for configuration management and deployment (Kubernetes, ArgoCD)
-. Shell script for triggering deployments via webhook.
 . GitHub Actions for automating the deployment process.
 
+. Terraform for provisioning AWS infrastructure.
+
+. Ansible as configuration management to install Kubernetes(k3s), ArgoCD.
+
+. Creating webhook in gitops repo to automated the sync process.
+
+
 The infrastructure includes:
-. A VPC with subnets, associated with Internet Gateway and route tables.
+. A VPC with subnets, associated with Internet Gateway, route table, security group, store statefile into s3 backend.
 . EC2 instances for Kubernetes master and worker nodes.
 . An Ansible node to manage the configuration of Kubernetes and ArgoCD.
 . Necessary security groups.
