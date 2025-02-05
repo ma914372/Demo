@@ -7,6 +7,8 @@ This project uses the following tools and services:
 
 . Ansible as configuration management to install Kubernetes(k3s), ArgoCD.
 
+. Creating the reposititory connection with argocd then creating argocd application using yml.
+
 . Creating webhook in gitops repo to automated the sync process.
 
 
